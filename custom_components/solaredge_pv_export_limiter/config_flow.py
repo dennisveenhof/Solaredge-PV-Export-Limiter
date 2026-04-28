@@ -79,9 +79,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _power_entity_selector() -> EntitySelector:
-    return EntitySelector(
-        EntitySelectorConfig(domain="sensor", device_class="power")
-    )
+    return EntitySelector(EntitySelectorConfig(domain="sensor", device_class="power"))
 
 
 def _energy_price_selector() -> EntitySelector:
@@ -89,15 +87,16 @@ def _energy_price_selector() -> EntitySelector:
 
 
 def _voltage_entity_selector() -> EntitySelector:
-    return EntitySelector(
-        EntitySelectorConfig(domain="sensor", device_class="voltage")
-    )
+    return EntitySelector(EntitySelectorConfig(domain="sensor", device_class="voltage"))
 
 
 def _number_selector(min_v: float, max_v: float, step: float, unit: str) -> NumberSelector:
     return NumberSelector(
         NumberSelectorConfig(
-            min=min_v, max=max_v, step=step, unit_of_measurement=unit,
+            min=min_v,
+            max=max_v,
+            step=step,
+            unit_of_measurement=unit,
             mode=NumberSelectorMode.BOX,
         )
     )
@@ -144,9 +143,7 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
             return await self.async_step_inverter()
         return self.async_show_form(step_id="user", data_schema=vol.Schema({}))
 
-    async def async_step_inverter(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_inverter(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Pick the SolarEdge AC-power sensor and the writable limit number."""
         errors: dict[str, str] = {}
 
@@ -175,9 +172,7 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(step_id="inverter", data_schema=schema, errors=errors)
 
-    async def async_step_grid_meter(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_grid_meter(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Pick P1 import + export sensors."""
         errors: dict[str, str] = {}
 
@@ -208,35 +203,27 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
             self._data.update(user_input)
             return await self.async_step_optional()
 
-        suggested_nominal = _suggest_inverter_nominal(
-            self.hass, self._data[CONF_INVERTER_AC_POWER]
-        )
+        suggested_nominal = _suggest_inverter_nominal(self.hass, self._data[CONF_INVERTER_AC_POWER])
 
         schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_INVERTER_NOMINAL_W, default=suggested_nominal
-                ): _number_selector(
+                vol.Required(CONF_INVERTER_NOMINAL_W, default=suggested_nominal): _number_selector(
                     MIN_INVERTER_NOMINAL_W, MAX_INVERTER_NOMINAL_W, 100, "W"
                 ),
                 vol.Required(
                     CONF_UPDATE_INTERVAL_S, default=DEFAULT_UPDATE_INTERVAL_S
-                ): _number_selector(
-                    MIN_UPDATE_INTERVAL_S, MAX_UPDATE_INTERVAL_S, 1, "s"
-                ),
+                ): _number_selector(MIN_UPDATE_INTERVAL_S, MAX_UPDATE_INTERVAL_S, 1, "s"),
                 vol.Required(
                     CONF_SMOOTHING_WINDOW_S, default=DEFAULT_SMOOTHING_WINDOW_S
                 ): _number_selector(2, 30, 1, "s"),
-                vol.Required(
-                    CONF_HYSTERESIS_PCT, default=DEFAULT_HYSTERESIS_PCT
-                ): _number_selector(MIN_HYSTERESIS_PCT, MAX_HYSTERESIS_PCT, 0.1, "%"),
+                vol.Required(CONF_HYSTERESIS_PCT, default=DEFAULT_HYSTERESIS_PCT): _number_selector(
+                    MIN_HYSTERESIS_PCT, MAX_HYSTERESIS_PCT, 0.1, "%"
+                ),
             }
         )
         return self.async_show_form(step_id="inverter_params", data_schema=schema)
 
-    async def async_step_optional(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_optional(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Optional voltage protection and tariff awareness."""
         if user_input is not None:
             # Strip empty strings to None
@@ -249,9 +236,7 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Optional(CONF_GRID_VOLTAGE): _voltage_entity_selector(),
-                vol.Required(
-                    CONF_VOLTAGE_PROTECTION_ENABLED, default=False
-                ): bool,
+                vol.Required(CONF_VOLTAGE_PROTECTION_ENABLED, default=False): bool,
                 vol.Required(
                     CONF_VOLTAGE_WARNING_V, default=DEFAULT_VOLTAGE_WARNING_V
                 ): _number_selector(220, 270, 0.5, "V"),
@@ -259,9 +244,7 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_VOLTAGE_RECOVERY_V, default=DEFAULT_VOLTAGE_RECOVERY_V
                 ): _number_selector(200, 260, 0.5, "V"),
                 vol.Optional(CONF_TARIFF_PRICE): _energy_price_selector(),
-                vol.Required(
-                    CONF_TARIFF_ENABLED, default=False
-                ): bool,
+                vol.Required(CONF_TARIFF_ENABLED, default=False): bool,
                 vol.Required(
                     CONF_TARIFF_NEGATIVE_THRESHOLD,
                     default=DEFAULT_TARIFF_NEGATIVE_THRESHOLD_EUR,
@@ -274,9 +257,7 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         return self.async_show_form(step_id="optional", data_schema=schema)
 
-    async def async_step_setpoints(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_setpoints(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Per-mode setpoints in W."""
         if user_input is not None:
             self._data.update(user_input)
@@ -288,9 +269,9 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_SETPOINT_NORMAL, default=DEFAULT_SETPOINT_NORMAL_W
-                ): sp_schema(DEFAULT_SETPOINT_NORMAL_W),
+                vol.Required(CONF_SETPOINT_NORMAL, default=DEFAULT_SETPOINT_NORMAL_W): sp_schema(
+                    DEFAULT_SETPOINT_NORMAL_W
+                ),
                 vol.Required(
                     CONF_SETPOINT_VACATION, default=DEFAULT_SETPOINT_VACATION_W
                 ): sp_schema(DEFAULT_SETPOINT_VACATION_W),
@@ -298,18 +279,16 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_SETPOINT_NEGATIVE_PRICE,
                     default=DEFAULT_SETPOINT_NEGATIVE_PRICE_W,
                 ): sp_schema(DEFAULT_SETPOINT_NEGATIVE_PRICE_W),
-                vol.Required(
-                    CONF_SETPOINT_WIDE, default=DEFAULT_SETPOINT_WIDE_W
-                ): sp_schema(DEFAULT_SETPOINT_WIDE_W),
+                vol.Required(CONF_SETPOINT_WIDE, default=DEFAULT_SETPOINT_WIDE_W): sp_schema(
+                    DEFAULT_SETPOINT_WIDE_W
+                ),
                 vol.Required(CONF_INITIAL_MODE, default=Mode.NORMAL): _mode_selector(),
                 vol.Required(CONF_ENABLED_AT_START, default=True): bool,
             }
         )
         return self.async_show_form(step_id="setpoints", data_schema=schema)
 
-    async def async_step_finish(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_finish(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Optional notify target + final create."""
         if user_input is not None:
             if user_input.get(CONF_NOTIFY_TARGET):
@@ -338,16 +317,18 @@ class PVExportLimiterOptionsFlow(OptionsFlow):
         self._entry = entry
         self._options: dict[str, Any] = {}
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Step 1 — re-select sensors with clear descriptions."""
         errors: dict[str, str] = {}
         merged = {**self._entry.data, **self._entry.options}
 
         if user_input is not None:
-            for key in (CONF_INVERTER_AC_POWER, CONF_INVERTER_LIMIT,
-                        CONF_GRID_IMPORT, CONF_GRID_EXPORT):
+            for key in (
+                CONF_INVERTER_AC_POWER,
+                CONF_INVERTER_LIMIT,
+                CONF_GRID_IMPORT,
+                CONF_GRID_EXPORT,
+            ):
                 if not self.hass.states.get(user_input.get(key, "")):
                     errors[key] = "entity_not_found"
             if not user_input.get(CONF_INVERTER_LIMIT, "").startswith("number."):
@@ -389,9 +370,7 @@ class PVExportLimiterOptionsFlow(OptionsFlow):
         )
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
 
-    async def async_step_settings(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_settings(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Step 2 — setpoints and control loop parameters."""
         merged = {**self._entry.data, **self._entry.options}
 

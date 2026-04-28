@@ -48,9 +48,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: PVExportLimiterCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        PVLimiterBinarySensor(coordinator, desc) for desc in BINARY_SENSORS
-    )
+    async_add_entities(PVLimiterBinarySensor(coordinator, desc) for desc in BINARY_SENSORS)
 
 
 class PVLimiterBinarySensor(PVLimiterBaseEntity, BinarySensorEntity):

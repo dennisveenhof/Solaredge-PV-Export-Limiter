@@ -101,9 +101,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: PVExportLimiterCoordinator = hass.data[DOMAIN][entry.entry_id]
-    entities: list[SensorEntity] = [
-        PVLimiterSensor(coordinator, desc) for desc in SENSORS
-    ]
+    entities: list[SensorEntity] = [PVLimiterSensor(coordinator, desc) for desc in SENSORS]
     entities.append(PVLimiterCurtailmentEnergy(coordinator))
     async_add_entities(entities)
 

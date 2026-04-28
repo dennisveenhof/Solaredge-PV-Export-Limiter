@@ -135,38 +135,26 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         self._notify_target = merged.get(CONF_NOTIFY_TARGET)
 
         # Inverter
-        self._nominal_w = float(
-            merged.get(CONF_INVERTER_NOMINAL_W, DEFAULT_INVERTER_NOMINAL_W)
-        )
+        self._nominal_w = float(merged.get(CONF_INVERTER_NOMINAL_W, DEFAULT_INVERTER_NOMINAL_W))
 
         # Tuning
-        smoothing_s = float(
-            merged.get(CONF_SMOOTHING_WINDOW_S, DEFAULT_SMOOTHING_WINDOW_S)
-        )
+        smoothing_s = float(merged.get(CONF_SMOOTHING_WINDOW_S, DEFAULT_SMOOTHING_WINDOW_S))
         self._smoothing = SmoothingBuffer(window_s=smoothing_s)
-        self._hysteresis_pct = float(
-            merged.get(CONF_HYSTERESIS_PCT, DEFAULT_HYSTERESIS_PCT)
-        )
+        self._hysteresis_pct = float(merged.get(CONF_HYSTERESIS_PCT, DEFAULT_HYSTERESIS_PCT))
 
         # Setpoints
-        self._setpoint_normal = int(
-            merged.get(CONF_SETPOINT_NORMAL, DEFAULT_SETPOINT_NORMAL_W)
-        )
+        self._setpoint_normal = int(merged.get(CONF_SETPOINT_NORMAL, DEFAULT_SETPOINT_NORMAL_W))
         self._setpoint_vacation = int(
             merged.get(CONF_SETPOINT_VACATION, DEFAULT_SETPOINT_VACATION_W)
         )
         self._setpoint_negative_price = int(
             merged.get(CONF_SETPOINT_NEGATIVE_PRICE, DEFAULT_SETPOINT_NEGATIVE_PRICE_W)
         )
-        self._setpoint_wide = int(
-            merged.get(CONF_SETPOINT_WIDE, DEFAULT_SETPOINT_WIDE_W)
-        )
+        self._setpoint_wide = int(merged.get(CONF_SETPOINT_WIDE, DEFAULT_SETPOINT_WIDE_W))
         self._setpoint_manual = DEFAULT_SETPOINT_MANUAL_W
 
         # Voltage protection
-        self._voltage_protection_enabled = bool(
-            merged.get(CONF_VOLTAGE_PROTECTION_ENABLED, False)
-        )
+        self._voltage_protection_enabled = bool(merged.get(CONF_VOLTAGE_PROTECTION_ENABLED, False))
         self._voltage_warning_v = float(
             merged.get(CONF_VOLTAGE_WARNING_V, DEFAULT_VOLTAGE_WARNING_V)
         )
@@ -176,12 +164,8 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
 
         # Tariff
         self._tariff_enabled = bool(merged.get(CONF_TARIFF_ENABLED, False))
-        self._tariff_negative_threshold = float(
-            merged.get(CONF_TARIFF_NEGATIVE_THRESHOLD, 0.0)
-        )
-        self._tariff_high_threshold = float(
-            merged.get(CONF_TARIFF_HIGH_THRESHOLD, 0.30)
-        )
+        self._tariff_negative_threshold = float(merged.get(CONF_TARIFF_NEGATIVE_THRESHOLD, 0.0))
+        self._tariff_high_threshold = float(merged.get(CONF_TARIFF_HIGH_THRESHOLD, 0.30))
 
         # Mutable runtime state
         self._mode: str = merged.get(CONF_INITIAL_MODE, Mode.NORMAL)
@@ -190,9 +174,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         self._last_write_at: float | None = None
         self._anomaly_flag = TimedFlag(duration_s=ANOMALY_DURATION_S)
         self._voltage_warning_active = False
-        self._voltage_warning_flag = TimedFlag(
-            duration_s=VOLTAGE_PROTECTION_DURATION_S
-        )
+        self._voltage_warning_flag = TimedFlag(duration_s=VOLTAGE_PROTECTION_DURATION_S)
         self._sensor_loss_flag = TimedFlag(duration_s=SENSOR_LOSS_GRACE_PERIOD_S)
         self._negative_price_flag = TimedFlag(duration_s=PRICE_NEGATIVE_DEBOUNCE_S)
         self._user_mode_override = False  # set when user manually picks mode
@@ -320,12 +302,8 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         pv_raw = self._read_power(self._inverter_ac_power)
         imp_raw = self._read_power(self._grid_import)
         exp_raw = self._read_power(self._grid_export)
-        voltage_raw = (
-            self._read_float(self._grid_voltage) if self._grid_voltage else None
-        )
-        tariff_price = (
-            self._read_float(self._tariff_price) if self._tariff_price else None
-        )
+        voltage_raw = self._read_float(self._grid_voltage) if self._grid_voltage else None
+        tariff_price = self._read_float(self._tariff_price) if self._tariff_price else None
         current_pct = self._read_float(self._inverter_limit) or 100.0
 
         sensor_loss = self._sensor_loss_flag.update(
@@ -387,7 +365,10 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
                 "Computed load %.0f W is negative (PV=%.0f W, import=%.0f W, "
                 "export=%.0f W) — PV sensor may be underreporting; using grid "
                 "import as load estimate to prevent runaway export",
-                load_w, pv_smooth, imp_smooth, exp_smooth,
+                load_w,
+                pv_smooth,
+                imp_smooth,
+                exp_smooth,
             )
             load_w = imp_smooth
 
@@ -418,9 +399,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         await self._write_limit(target_pct)
 
         # Anomaly detection (only meaningful when limiter is enabled)
-        anomaly = self._evaluate_anomaly(
-            export_w=exp_smooth, pv_w=pv_smooth, now=now
-        )
+        anomaly = self._evaluate_anomaly(export_w=exp_smooth, pv_w=pv_smooth, now=now)
 
         return self._snapshot(
             status=status,
@@ -457,9 +436,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
 
     def _evaluate_anomaly(self, *, export_w: float, pv_w: float, now: float) -> bool:
         condition = (
-            export_w > ANOMALY_EXPORT_THRESHOLD_W
-            and pv_w > ANOMALY_PV_MIN_W
-            and self._enabled
+            export_w > ANOMALY_EXPORT_THRESHOLD_W and pv_w > ANOMALY_PV_MIN_W and self._enabled
         )
         active = self._anomaly_flag.update(condition, now)
         if active and not self._notified_anomaly and self._notify_target:
@@ -482,9 +459,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
             self._notified_anomaly = False
         return active
 
-    def _evaluate_voltage_warning(
-        self, voltage: float | None, now: float
-    ) -> bool:
+    def _evaluate_voltage_warning(self, voltage: float | None, now: float) -> bool:
         if not self._voltage_protection_enabled or voltage is None:
             self._voltage_warning_active = False
             self._voltage_warning_flag.reset()
@@ -498,9 +473,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
             self._voltage_warning_active = False
         return self._voltage_warning_active
 
-    async def _maybe_switch_mode_for_tariff(
-        self, price: float, now: float
-    ) -> None:
+    async def _maybe_switch_mode_for_tariff(self, price: float, now: float) -> None:
         if self._user_mode_override and self._mode == Mode.MANUAL:
             return  # respect manual override
 
@@ -541,8 +514,10 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         target_pct = clamp_pct(target_pct)
         current_pct = self._read_float(self._inverter_limit)
 
-        if not force and current_pct is not None and not should_write(
-            target_pct, current_pct, self._hysteresis_pct
+        if (
+            not force
+            and current_pct is not None
+            and not should_write(target_pct, current_pct, self._hysteresis_pct)
         ):
             return
 

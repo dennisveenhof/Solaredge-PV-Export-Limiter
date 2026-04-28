@@ -187,21 +187,27 @@ class TestEffectiveSetpointW:
         ],
     )
     def test_modes(self, mode, expected):
-        assert effective_setpoint_w(
-            mode=mode,
-            setpoint_normal=50,
-            setpoint_vacation=0,
-            setpoint_negative_price=0,
-            setpoint_wide=200,
-            setpoint_manual=75,
-        ) == expected
+        assert (
+            effective_setpoint_w(
+                mode=mode,
+                setpoint_normal=50,
+                setpoint_vacation=0,
+                setpoint_negative_price=0,
+                setpoint_wide=200,
+                setpoint_manual=75,
+            )
+            == expected
+        )
 
     def test_off_returns_none(self):
-        assert effective_setpoint_w(
-            mode="off",
-            setpoint_normal=50,
-            setpoint_vacation=0,
-            setpoint_negative_price=0,
-            setpoint_wide=200,
-            setpoint_manual=75,
-        ) is None
+        assert (
+            effective_setpoint_w(
+                mode="off",
+                setpoint_normal=50,
+                setpoint_vacation=0,
+                setpoint_negative_price=0,
+                setpoint_wide=200,
+                setpoint_manual=75,
+            )
+            is None
+        )
