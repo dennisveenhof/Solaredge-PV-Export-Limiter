@@ -68,3 +68,4 @@ home-assistant_v2.db-wal
 # Local dev
 .config/
 local/
+CLAUDE.md
