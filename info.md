@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/dennisveenhof/Solaredge-PV-Export-Limiter/main/docs/logo.png" alt="Solaredge PV Export Limiter" width="160" />
+</p>
+
 # Solaredge PV Export Limiter
 
 Dynamic export limiting for SolarEdge inverters in Home Assistant. Reads household

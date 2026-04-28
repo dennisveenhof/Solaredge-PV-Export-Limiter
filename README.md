@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.png" alt="Solaredge PV Export Limiter" width="180" />
+</p>
+
 # Solaredge PV Export Limiter
 
 > ⚠️ **SolarEdge only.** This integration is built specifically for **SolarEdge HD-Wave**
