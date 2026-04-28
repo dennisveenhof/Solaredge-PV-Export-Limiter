@@ -79,21 +79,50 @@
   "options": {
     "step": {
       "init": {
-        "title": "Solaredge PV Export Limiter options",
-        "description": "Tune the limiter at any time. Changes take effect after a brief reload.",
+        "title": "Sensors — step 1 of 2",
+        "description": "Verify or change the sensors. After saving, you continue to setpoints and parameters.",
         "data": {
+          "inverter_ac_power_entity": "Inverter AC power",
+          "inverter_limit_entity": "Active power limit (writable number)",
+          "inverter_nominal_w": "Inverter nominal power (W)",
+          "grid_import_entity": "Grid import — power consumption from grid",
+          "grid_export_entity": "Grid export — power returned to grid",
+          "grid_voltage_entity": "Grid voltage sensor (optional)"
+        },
+        "data_description": {
+          "inverter_ac_power_entity": "Current AC output of your SolarEdge inverter in Watts. In SolarEdge Modbus Multi this is called 'AC Power' (e.g. sensor.solaredge_multi_ac_power).",
+          "inverter_limit_entity": "The writable number entity that sets the inverter output limit in %. Must start with 'number.' — in SolarEdge Modbus Multi this is 'Active Power Limit' (e.g. number.solaredge_multi_active_power_limit).",
+          "inverter_nominal_w": "Maximum rated output of your inverter. SE3K = 3000, SE4K = 4000, SE5K = 5000. Check the label on your inverter.",
+          "grid_import_entity": "⬇️ Power you are drawing FROM the grid right now (W). In the DSMR/P1 integration this is 'Power Consumption' or 'electricity_meter_power_consumption'. Positive when consuming from the grid.",
+          "grid_export_entity": "⬆️ Power you are feeding BACK to the grid right now (W). In the DSMR/P1 integration this is 'Power Production' or 'electricity_meter_power_production'. Positive when exporting. Do NOT confuse with the inverter AC power sensor.",
+          "grid_voltage_entity": "Optional: phase L1 voltage (V) from SolarEdge Modbus Multi. Only needed for over-voltage protection."
+        }
+      },
+      "settings": {
+        "title": "Setpoints & parameters — step 2 of 2",
+        "description": "Set the maximum allowed export per mode and tune the control loop.",
+        "data": {
+          "setpoint_normal_w": "Normal mode setpoint (W)",
+          "setpoint_vacation_w": "Vacation mode setpoint (W)",
+          "setpoint_negative_price_w": "Negative price mode setpoint (W)",
+          "setpoint_wide_w": "Wide mode setpoint (W)",
           "hysteresis_pct": "Hysteresis (%)",
           "update_interval_s": "Update interval (seconds)",
           "smoothing_window_s": "Smoothing window (seconds)",
-          "setpoint_normal_w": "Normal setpoint (W)",
-          "setpoint_vacation_w": "Vacation setpoint (W)",
-          "setpoint_negative_price_w": "Negative price setpoint (W)",
-          "setpoint_wide_w": "Wide setpoint (W)",
           "voltage_protection_enabled": "Voltage protection enabled",
           "voltage_warning_v": "Voltage warning threshold (V)",
           "tariff_enabled": "Tariff awareness enabled",
           "tariff_negative_threshold": "Negative price threshold (€/kWh)",
           "tariff_high_threshold": "High price threshold (€/kWh)"
+        },
+        "data_description": {
+          "setpoint_normal_w": "Maximum grid export in Normal mode. 50 W = small buffer to avoid importing. 0 W = aim for net-zero. 200 W = allow generous export.",
+          "setpoint_vacation_w": "Used in Vacation mode. Typically 0 W so no surplus is exported while away.",
+          "setpoint_negative_price_w": "Used when electricity price drops below the negative threshold. Typically 0 W to avoid paying to export.",
+          "setpoint_wide_w": "Used in Wide mode. Higher value (e.g. 200 W) when some export is acceptable.",
+          "hysteresis_pct": "Minimum change (%) before a new limit is written to the inverter. Prevents excessive Modbus writes. Default 1.5% works well.",
+          "update_interval_s": "How often the control loop runs. 10 s recommended. Do not go below 5 s.",
+          "smoothing_window_s": "Rolling average window for P1 sensor noise rejection. 8 s works well for most P1 meters."
         }
       }
     }

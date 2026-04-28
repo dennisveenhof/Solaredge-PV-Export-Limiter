@@ -333,51 +333,87 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class PVExportLimiterOptionsFlow(OptionsFlow):
-    """Allow editing every wizard field after install."""
+    """Allow editing every wizard field after install — two steps."""
 
     def __init__(self, entry: ConfigEntry) -> None:
         self._entry = entry
+        self._options: dict[str, Any] = {}
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
+        """Step 1 — re-select sensors with clear descriptions."""
+        errors: dict[str, str] = {}
         merged = {**self._entry.data, **self._entry.options}
+
+        if user_input is not None:
+            for key in (CONF_INVERTER_AC_POWER, CONF_INVERTER_LIMIT,
+                        CONF_GRID_IMPORT, CONF_GRID_EXPORT):
+                if not self.hass.states.get(user_input.get(key, "")):
+                    errors[key] = "entity_not_found"
+            if not user_input.get(CONF_INVERTER_LIMIT, "").startswith("number."):
+                errors[CONF_INVERTER_LIMIT] = "must_be_number_entity"
+            if user_input.get(CONF_GRID_IMPORT) == user_input.get(CONF_GRID_EXPORT):
+                errors["base"] = "import_export_same"
+
+            if not errors:
+                self._options.update(user_input)
+                return await self.async_step_settings()
+
         schema = vol.Schema(
             {
                 vol.Required(
-                    CONF_HYSTERESIS_PCT,
-                    default=merged.get(CONF_HYSTERESIS_PCT, DEFAULT_HYSTERESIS_PCT),
-                ): _number_selector(MIN_HYSTERESIS_PCT, MAX_HYSTERESIS_PCT, 0.1, "%"),
+                    CONF_INVERTER_AC_POWER,
+                    default=merged.get(CONF_INVERTER_AC_POWER, vol.UNDEFINED),
+                ): _power_entity_selector(),
                 vol.Required(
-                    CONF_UPDATE_INTERVAL_S,
-                    default=merged.get(CONF_UPDATE_INTERVAL_S, DEFAULT_UPDATE_INTERVAL_S),
-                ): _number_selector(
-                    MIN_UPDATE_INTERVAL_S, MAX_UPDATE_INTERVAL_S, 1, "s"
-                ),
+                    CONF_INVERTER_LIMIT,
+                    default=merged.get(CONF_INVERTER_LIMIT, vol.UNDEFINED),
+                ): EntitySelector(EntitySelectorConfig(domain="number")),
                 vol.Required(
-                    CONF_SMOOTHING_WINDOW_S,
-                    default=merged.get(
-                        CONF_SMOOTHING_WINDOW_S, DEFAULT_SMOOTHING_WINDOW_S
-                    ),
-                ): _number_selector(2, 30, 1, "s"),
+                    CONF_INVERTER_NOMINAL_W,
+                    default=merged.get(CONF_INVERTER_NOMINAL_W, DEFAULT_INVERTER_NOMINAL_W),
+                ): _number_selector(MIN_INVERTER_NOMINAL_W, MAX_INVERTER_NOMINAL_W, 100, "W"),
+                vol.Required(
+                    CONF_GRID_IMPORT,
+                    default=merged.get(CONF_GRID_IMPORT, vol.UNDEFINED),
+                ): _power_entity_selector(),
+                vol.Required(
+                    CONF_GRID_EXPORT,
+                    default=merged.get(CONF_GRID_EXPORT, vol.UNDEFINED),
+                ): _power_entity_selector(),
+                vol.Optional(
+                    CONF_GRID_VOLTAGE,
+                    description={"suggested_value": merged.get(CONF_GRID_VOLTAGE)},
+                ): _voltage_entity_selector(),
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+
+    async def async_step_settings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Step 2 — setpoints and control loop parameters."""
+        merged = {**self._entry.data, **self._entry.options}
+
+        if user_input is not None:
+            self._options.update(user_input)
+            return self.async_create_entry(title="", data=self._options)
+
+        schema = vol.Schema(
+            {
                 vol.Required(
                     CONF_SETPOINT_NORMAL,
                     default=merged.get(CONF_SETPOINT_NORMAL, DEFAULT_SETPOINT_NORMAL_W),
                 ): _number_selector(MIN_SETPOINT_W, MAX_SETPOINT_W, 5, "W"),
                 vol.Required(
                     CONF_SETPOINT_VACATION,
-                    default=merged.get(
-                        CONF_SETPOINT_VACATION, DEFAULT_SETPOINT_VACATION_W
-                    ),
+                    default=merged.get(CONF_SETPOINT_VACATION, DEFAULT_SETPOINT_VACATION_W),
                 ): _number_selector(MIN_SETPOINT_W, MAX_SETPOINT_W, 5, "W"),
                 vol.Required(
                     CONF_SETPOINT_NEGATIVE_PRICE,
                     default=merged.get(
-                        CONF_SETPOINT_NEGATIVE_PRICE,
-                        DEFAULT_SETPOINT_NEGATIVE_PRICE_W,
+                        CONF_SETPOINT_NEGATIVE_PRICE, DEFAULT_SETPOINT_NEGATIVE_PRICE_W
                     ),
                 ): _number_selector(MIN_SETPOINT_W, MAX_SETPOINT_W, 5, "W"),
                 vol.Required(
@@ -385,14 +421,24 @@ class PVExportLimiterOptionsFlow(OptionsFlow):
                     default=merged.get(CONF_SETPOINT_WIDE, DEFAULT_SETPOINT_WIDE_W),
                 ): _number_selector(MIN_SETPOINT_W, MAX_SETPOINT_W, 5, "W"),
                 vol.Required(
+                    CONF_HYSTERESIS_PCT,
+                    default=merged.get(CONF_HYSTERESIS_PCT, DEFAULT_HYSTERESIS_PCT),
+                ): _number_selector(MIN_HYSTERESIS_PCT, MAX_HYSTERESIS_PCT, 0.1, "%"),
+                vol.Required(
+                    CONF_UPDATE_INTERVAL_S,
+                    default=merged.get(CONF_UPDATE_INTERVAL_S, DEFAULT_UPDATE_INTERVAL_S),
+                ): _number_selector(MIN_UPDATE_INTERVAL_S, MAX_UPDATE_INTERVAL_S, 1, "s"),
+                vol.Required(
+                    CONF_SMOOTHING_WINDOW_S,
+                    default=merged.get(CONF_SMOOTHING_WINDOW_S, DEFAULT_SMOOTHING_WINDOW_S),
+                ): _number_selector(2, 30, 1, "s"),
+                vol.Required(
                     CONF_VOLTAGE_PROTECTION_ENABLED,
                     default=merged.get(CONF_VOLTAGE_PROTECTION_ENABLED, False),
                 ): bool,
                 vol.Required(
                     CONF_VOLTAGE_WARNING_V,
-                    default=merged.get(
-                        CONF_VOLTAGE_WARNING_V, DEFAULT_VOLTAGE_WARNING_V
-                    ),
+                    default=merged.get(CONF_VOLTAGE_WARNING_V, DEFAULT_VOLTAGE_WARNING_V),
                 ): _number_selector(220, 270, 0.5, "V"),
                 vol.Required(
                     CONF_TARIFF_ENABLED,
@@ -401,17 +447,15 @@ class PVExportLimiterOptionsFlow(OptionsFlow):
                 vol.Required(
                     CONF_TARIFF_NEGATIVE_THRESHOLD,
                     default=merged.get(
-                        CONF_TARIFF_NEGATIVE_THRESHOLD,
-                        DEFAULT_TARIFF_NEGATIVE_THRESHOLD_EUR,
+                        CONF_TARIFF_NEGATIVE_THRESHOLD, DEFAULT_TARIFF_NEGATIVE_THRESHOLD_EUR
                     ),
                 ): _number_selector(-1.0, 1.0, 0.01, "EUR"),
                 vol.Required(
                     CONF_TARIFF_HIGH_THRESHOLD,
                     default=merged.get(
-                        CONF_TARIFF_HIGH_THRESHOLD,
-                        DEFAULT_TARIFF_HIGH_THRESHOLD_EUR,
+                        CONF_TARIFF_HIGH_THRESHOLD, DEFAULT_TARIFF_HIGH_THRESHOLD_EUR
                     ),
                 ): _number_selector(0.0, 2.0, 0.01, "EUR"),
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_form(step_id="settings", data_schema=schema)
