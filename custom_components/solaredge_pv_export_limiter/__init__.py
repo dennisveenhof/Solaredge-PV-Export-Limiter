@@ -39,9 +39,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Serve the bundled Lovelace card JS file."""
     card_path = Path(__file__).parent / "lovelace" / "pv-limiter-card.js"
     if card_path.is_file():
-        hass.http.register_static_path(
-            LOVELACE_CARD_URL, str(card_path), cache_headers=False
-        )
+        try:
+            hass.http.register_static_path(
+                LOVELACE_CARD_URL, str(card_path), cache_headers=False
+            )
+        except Exception as err:
+            _LOGGER.warning("Could not register Lovelace card static path: %s", err)
     return True
 
 
