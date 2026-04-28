@@ -10,5 +10,5 @@
   "integration_type": "service",
   "requirements": [],
   "dependencies": ["http"],
-  "after_dependencies": ["solaredge_modbus_multi", "dsmr"]
+  "after_dependencies": ["dsmr"]
 }
