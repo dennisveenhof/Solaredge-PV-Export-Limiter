@@ -21,14 +21,22 @@
         "data": {
           "inverter_ac_power_entity": "Omvormer AC-vermogen sensor",
           "inverter_limit_entity": "Active power limit (instelbaar)"
+        },
+        "data_description": {
+          "inverter_ac_power_entity": "Het actuele AC-vermogen van je SolarEdge omvormer in Watt. In SolarEdge Modbus Multi heet dit 'AC Power' (bv. sensor.solaredge_multi_ac_power).",
+          "inverter_limit_entity": "De instelbare number-entity die de omvormer-limiet in % instelt. Moet beginnen met 'number.' — in SolarEdge Modbus Multi is dit 'Active Power Limit' (bv. number.solaredge_multi_active_power_limit)."
         }
       },
       "grid_meter": {
         "title": "P1 slimme meter",
-        "description": "Selecteer de sensors die je netafname (import) en teruglevering (export) tonen.",
+        "description": "Selecteer de sensors die je netafname en teruglevering tonen.",
         "data": {
-          "grid_import_entity": "Netafname sensor (W)",
-          "grid_export_entity": "Teruglevering sensor (W)"
+          "grid_import_entity": "Netafname — stroom die je VAN het net haalt",
+          "grid_export_entity": "Teruglevering — stroom die je AAN het net levert"
+        },
+        "data_description": {
+          "grid_import_entity": "⬇️ Vermogen dat je OP DIT MOMENT van het net afhaalt (W). In de DSMR/P1 integratie heet dit 'Power Consumption' of 'electricity_meter_power_consumption'. Positief als je stroom verbruikt van het net. Kies hier NIET de omvormer AC-vermogen sensor.",
+          "grid_export_entity": "⬆️ Vermogen dat je OP DIT MOMENT teruglevert aan het net (W). In de DSMR/P1 integratie heet dit 'Power Production' of 'electricity_meter_power_production'. Positief als je exporteert. Verwar dit NIET met de omvormer AC-vermogen sensor."
         }
       },
       "inverter_params": {

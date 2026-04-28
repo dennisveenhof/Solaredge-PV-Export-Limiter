@@ -21,14 +21,22 @@
         "data": {
           "inverter_ac_power_entity": "Inverter AC power sensor",
           "inverter_limit_entity": "Active power limit (writable)"
+        },
+        "data_description": {
+          "inverter_ac_power_entity": "Current AC output of your SolarEdge inverter in Watts. In SolarEdge Modbus Multi this is called 'AC Power' (e.g. sensor.solaredge_multi_ac_power).",
+          "inverter_limit_entity": "The writable number entity that sets the inverter output limit in %. Must start with 'number.' — in SolarEdge Modbus Multi this is 'Active Power Limit' (e.g. number.solaredge_multi_active_power_limit)."
         }
       },
       "grid_meter": {
         "title": "P1 smart meter",
         "description": "Select the sensors that show your grid import (consumption) and grid export (production) power.",
         "data": {
-          "grid_import_entity": "Grid import sensor (W)",
-          "grid_export_entity": "Grid export sensor (W)"
+          "grid_import_entity": "Grid import — power drawn FROM the grid",
+          "grid_export_entity": "Grid export — power returned TO the grid"
+        },
+        "data_description": {
+          "grid_import_entity": "⬇️ Power you are drawing FROM the grid right now (W). In the DSMR/P1 integration this is 'Power Consumption' or 'electricity_meter_power_consumption'. Positive when consuming from the grid. Do NOT pick the inverter AC power sensor here.",
+          "grid_export_entity": "⬆️ Power you are feeding BACK to the grid right now (W). In the DSMR/P1 integration this is 'Power Production' or 'electricity_meter_power_production'. Positive when exporting. Do NOT confuse with the inverter AC power sensor."
         }
       },
       "inverter_params": {
