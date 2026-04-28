@@ -53,7 +53,9 @@
         "title": "Optionele beschermingen",
         "description": "Schakel spanningsbescherming in als je netspanning soms boven 250 V uitkomt (veroorzaakt inverter-trips). Schakel tarief-bewustzijn in om automatisch naar 'Negatieve prijs'-modus te wisselen bij negatieve EPEX-prijzen. Beide optioneel.",
         "data": {
-          "grid_voltage_entity": "Netspanning sensor (optioneel)",
+          "grid_voltage_entity": "Fase L1 spanning sensor (optioneel)",
+          "grid_voltage_l2_entity": "Fase L2 spanning sensor (optioneel, alleen 3-fase)",
+          "grid_voltage_l3_entity": "Fase L3 spanning sensor (optioneel, alleen 3-fase)",
           "voltage_protection_enabled": "Spanningsbescherming inschakelen",
           "voltage_warning_v": "Spanning-waarschuwingsdrempel (V)",
           "voltage_recovery_v": "Spanning-hersteldrempel (V)",
@@ -95,7 +97,9 @@
           "inverter_nominal_w": "Omvormer nominaal vermogen (W)",
           "grid_import_entity": "Netafname — stroom die je VAN het net haalt",
           "grid_export_entity": "Teruglevering — stroom die je AAN het net levert",
-          "grid_voltage_entity": "Netspanning sensor (optioneel)"
+          "grid_voltage_entity": "Fase L1 spanning sensor (optioneel)",
+          "grid_voltage_l2_entity": "Fase L2 spanning sensor (optioneel)",
+          "grid_voltage_l3_entity": "Fase L3 spanning sensor (optioneel)"
         },
         "data_description": {
           "inverter_ac_power_entity": "Het actuele AC-vermogen van je SolarEdge omvormer in Watt. In SolarEdge Modbus Multi heet dit 'AC Power' (bv. sensor.solaredge_multi_ac_power).",
@@ -103,7 +107,9 @@
           "inverter_nominal_w": "Maximaal nominaal vermogen van je omvormer. SE3K = 3000, SE4K = 4000, SE5K = 5000. Staat op het label van de omvormer.",
           "grid_import_entity": "⬇️ Vermogen dat je OP DIT MOMENT van het net afhaalt (W). In de DSMR/P1 integratie heet dit 'Power Consumption' of 'electricity_meter_power_consumption'. Waarde is positief als je stroom verbruikt van het net. LET OP: dit is NIET de omvormer-productie.",
           "grid_export_entity": "⬆️ Vermogen dat je OP DIT MOMENT teruglevert aan het net (W). In de DSMR/P1 integratie heet dit 'Power Production' of 'electricity_meter_power_production'. Waarde is positief als je exporteert. LET OP: verwar dit niet met de omvormer AC-vermogen sensor.",
-          "grid_voltage_entity": "Optioneel: fase L1 spanning (V) uit SolarEdge Modbus Multi. Alleen nodig als je overspanningsbeveiliging wilt."
+          "grid_voltage_entity": "Optioneel: fase L1 spanning (V) uit SolarEdge Modbus Multi. Alleen nodig als je overspanningsbeveiliging wilt.",
+          "grid_voltage_l2_entity": "Optioneel: fase L2 spanning. Alleen voor 3-fase omvormers — bescherming triggert op de hoogste van de 3 fases.",
+          "grid_voltage_l3_entity": "Optioneel: fase L3 spanning. Alleen voor 3-fase omvormers — bescherming triggert op de hoogste van de 3 fases."
         }
       },
       "settings": {

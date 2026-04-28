@@ -36,6 +36,8 @@ from .const import (
     CONF_GRID_EXPORT,
     CONF_GRID_IMPORT,
     CONF_GRID_VOLTAGE,
+    CONF_GRID_VOLTAGE_L2,
+    CONF_GRID_VOLTAGE_L3,
     CONF_HYSTERESIS_PCT,
     CONF_INITIAL_MODE,
     CONF_INVERTER_AC_POWER,
@@ -236,7 +238,12 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
         """Optional voltage protection and tariff awareness."""
         if user_input is not None:
             # Strip empty strings to None
-            for key in (CONF_GRID_VOLTAGE, CONF_TARIFF_PRICE):
+            for key in (
+                CONF_GRID_VOLTAGE,
+                CONF_GRID_VOLTAGE_L2,
+                CONF_GRID_VOLTAGE_L3,
+                CONF_TARIFF_PRICE,
+            ):
                 if not user_input.get(key):
                     user_input.pop(key, None)
             self._data.update(user_input)
@@ -245,6 +252,8 @@ class PVExportLimiterConfigFlow(ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Optional(CONF_GRID_VOLTAGE): _voltage_entity_selector(),
+                vol.Optional(CONF_GRID_VOLTAGE_L2): _voltage_entity_selector(),
+                vol.Optional(CONF_GRID_VOLTAGE_L3): _voltage_entity_selector(),
                 vol.Required(CONF_VOLTAGE_PROTECTION_ENABLED, default=False): bool,
                 vol.Required(
                     CONF_VOLTAGE_WARNING_V, default=DEFAULT_VOLTAGE_WARNING_V
@@ -374,6 +383,14 @@ class PVExportLimiterOptionsFlow(OptionsFlow):
                 vol.Optional(
                     CONF_GRID_VOLTAGE,
                     description={"suggested_value": merged.get(CONF_GRID_VOLTAGE)},
+                ): _voltage_entity_selector(),
+                vol.Optional(
+                    CONF_GRID_VOLTAGE_L2,
+                    description={"suggested_value": merged.get(CONF_GRID_VOLTAGE_L2)},
+                ): _voltage_entity_selector(),
+                vol.Optional(
+                    CONF_GRID_VOLTAGE_L3,
+                    description={"suggested_value": merged.get(CONF_GRID_VOLTAGE_L3)},
                 ): _voltage_entity_selector(),
             }
         )

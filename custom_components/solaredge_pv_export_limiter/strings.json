@@ -53,7 +53,9 @@
         "title": "Optional protections",
         "description": "Enable voltage protection if your grid voltage occasionally exceeds 250 V (causes inverter trips). Enable tariff awareness to automatically switch to 'Negative price' mode when EPEX prices are negative. Both are optional.",
         "data": {
-          "grid_voltage_entity": "Grid voltage sensor (optional)",
+          "grid_voltage_entity": "Phase L1 voltage sensor (optional)",
+          "grid_voltage_l2_entity": "Phase L2 voltage sensor (optional, 3-phase only)",
+          "grid_voltage_l3_entity": "Phase L3 voltage sensor (optional, 3-phase only)",
           "voltage_protection_enabled": "Enable voltage protection",
           "voltage_warning_v": "Voltage warning threshold (V)",
           "voltage_recovery_v": "Voltage recovery threshold (V)",
@@ -95,7 +97,9 @@
           "inverter_nominal_w": "Inverter nominal power (W)",
           "grid_import_entity": "Grid import — power consumption from grid",
           "grid_export_entity": "Grid export — power returned to grid",
-          "grid_voltage_entity": "Grid voltage sensor (optional)"
+          "grid_voltage_entity": "Phase L1 voltage sensor (optional)",
+          "grid_voltage_l2_entity": "Phase L2 voltage sensor (optional)",
+          "grid_voltage_l3_entity": "Phase L3 voltage sensor (optional)"
         },
         "data_description": {
           "inverter_ac_power_entity": "Current AC output of your SolarEdge inverter in Watts. In SolarEdge Modbus Multi this is called 'AC Power' (e.g. sensor.solaredge_multi_ac_power).",
@@ -103,7 +107,9 @@
           "inverter_nominal_w": "Maximum rated output of your inverter. SE3K = 3000, SE4K = 4000, SE5K = 5000. Check the label on your inverter.",
           "grid_import_entity": "⬇️ Power you are drawing FROM the grid right now (W). In the DSMR/P1 integration this is 'Power Consumption' or 'electricity_meter_power_consumption'. Positive when consuming from the grid.",
           "grid_export_entity": "⬆️ Power you are feeding BACK to the grid right now (W). In the DSMR/P1 integration this is 'Power Production' or 'electricity_meter_power_production'. Positive when exporting. Do NOT confuse with the inverter AC power sensor.",
-          "grid_voltage_entity": "Optional: phase L1 voltage (V) from SolarEdge Modbus Multi. Only needed for over-voltage protection."
+          "grid_voltage_entity": "Optional: phase L1 voltage (V) from SolarEdge Modbus Multi. Only needed for over-voltage protection.",
+          "grid_voltage_l2_entity": "Optional: phase L2 voltage. Only on 3-phase inverters — protection triggers on the highest of the 3 phases.",
+          "grid_voltage_l3_entity": "Optional: phase L3 voltage. Only on 3-phase inverters — protection triggers on the highest of the 3 phases."
         }
       },
       "settings": {

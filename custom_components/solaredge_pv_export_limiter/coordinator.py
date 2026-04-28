@@ -47,6 +47,8 @@ from .const import (
     CONF_GRID_EXPORT,
     CONF_GRID_IMPORT,
     CONF_GRID_VOLTAGE,
+    CONF_GRID_VOLTAGE_L2,
+    CONF_GRID_VOLTAGE_L3,
     CONF_HYSTERESIS_PCT,
     CONF_INITIAL_MODE,
     CONF_INVERTER_AC_POWER,
@@ -152,6 +154,8 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         self._grid_import = merged[CONF_GRID_IMPORT]
         self._grid_export = merged[CONF_GRID_EXPORT]
         self._grid_voltage = merged.get(CONF_GRID_VOLTAGE)
+        self._grid_voltage_l2 = merged.get(CONF_GRID_VOLTAGE_L2)
+        self._grid_voltage_l3 = merged.get(CONF_GRID_VOLTAGE_L3)
         self._tariff_price = merged.get(CONF_TARIFF_PRICE)
         self._notify_target = merged.get(CONF_NOTIFY_TARGET)
 
@@ -307,8 +311,9 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
                 self.hass.async_create_task(self.async_request_refresh())
 
         watched = [self._grid_export, self._grid_import]
-        if self._grid_voltage:
-            watched.append(self._grid_voltage)
+        for v in (self._grid_voltage, self._grid_voltage_l2, self._grid_voltage_l3):
+            if v:
+                watched.append(v)
         unsub = async_track_state_change_event(self.hass, watched, _changed)
         self._unsub_listeners.append(unsub)
 
@@ -337,7 +342,13 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         pv_raw = self._read_power(self._inverter_ac_power)
         imp_raw = self._read_power(self._grid_import)
         exp_raw = self._read_power(self._grid_export)
-        voltage_raw = self._read_float(self._grid_voltage) if self._grid_voltage else None
+        voltage_readings = [
+            self._read_float(e)
+            for e in (self._grid_voltage, self._grid_voltage_l2, self._grid_voltage_l3)
+            if e
+        ]
+        voltage_values = [v for v in voltage_readings if v is not None]
+        voltage_raw = max(voltage_values) if voltage_values else None
         tariff_price = self._read_float(self._tariff_price) if self._tariff_price else None
         current_pct = self._read_float(self._inverter_limit) or 100.0
 

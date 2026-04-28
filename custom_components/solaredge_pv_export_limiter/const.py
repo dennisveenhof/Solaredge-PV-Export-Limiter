@@ -115,6 +115,8 @@ CONF_INVERTER_LIMIT: Final = "inverter_limit_entity"
 CONF_GRID_IMPORT: Final = "grid_import_entity"
 CONF_GRID_EXPORT: Final = "grid_export_entity"
 CONF_GRID_VOLTAGE: Final = "grid_voltage_entity"
+CONF_GRID_VOLTAGE_L2: Final = "grid_voltage_l2_entity"
+CONF_GRID_VOLTAGE_L3: Final = "grid_voltage_l3_entity"
 CONF_TARIFF_PRICE: Final = "tariff_price_entity"
 
 CONF_INVERTER_NOMINAL_W: Final = "inverter_nominal_w"
