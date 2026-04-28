@@ -450,6 +450,11 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
                 target_pct = 100.0
                 status = Status.BUDGET_FREE
 
+        # Keep target_w consistent with the (possibly overridden) target_pct so
+        # the "PV target" sensor reflects what we actually instruct the
+        # inverter to deliver, not the would-be mode setpoint.
+        target_w = (target_pct / 100.0) * self._nominal_w
+
         await self._write_limit(target_pct)
 
         # Anomaly detection (only meaningful when limiter is enabled)

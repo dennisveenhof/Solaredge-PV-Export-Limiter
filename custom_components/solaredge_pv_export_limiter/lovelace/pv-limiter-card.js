@@ -298,7 +298,7 @@ window.customCards.push({
 });
 
 console.info(
-  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.3-beta3 ",
+  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.3-beta4 ",
   "color: white; background: #03a9f4; font-weight: 700;",
   "color: #03a9f4; background: white; font-weight: 700;"
 );
