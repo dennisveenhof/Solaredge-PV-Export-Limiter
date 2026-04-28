@@ -89,6 +89,7 @@ SENSORS: tuple[PVLimiterSensorDescription, ...] = (
             "voltage_high",
             "write_error",
             "starting",
+            "budget_free",
             "budget_exhausted",
         ],
         value_fn=lambda s: str(s.status),

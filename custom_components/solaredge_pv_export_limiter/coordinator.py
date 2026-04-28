@@ -435,10 +435,20 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         else:
             status = Status.OK
 
-        # Strict enforcement (option 1B): forces 0% when budget is depleted.
-        if self._budget_enabled and self._is_budget_exhausted():
-            target_pct = 0.0
-            status = Status.BUDGET_EXHAUSTED
+        # Budget override (free-then-clamp model):
+        # - Phase 1 (budget remaining): inverter runs at 100%, the regular
+        #   mode setpoint is suspended so the user can fully exhaust their
+        #   netting allowance.
+        # - Phase 2 (budget depleted): clamp to 0 W until the next period
+        #   reset.
+        # Voltage protection still wins above this — it's a safety failsafe.
+        if self._budget_enabled and not voltage_warning:
+            if self._is_budget_exhausted():
+                target_pct = 0.0
+                status = Status.BUDGET_EXHAUSTED
+            else:
+                target_pct = 100.0
+                status = Status.BUDGET_FREE
 
         await self._write_limit(target_pct)
 

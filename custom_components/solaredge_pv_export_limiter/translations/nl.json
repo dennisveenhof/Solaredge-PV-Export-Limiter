@@ -135,7 +135,7 @@
           "hysteresis_pct": "Minimale wijziging (%) voordat een nieuwe limiet naar de omvormer wordt geschreven. Voorkomt overmatig schrijven via Modbus. Standaard 1,5% werkt goed.",
           "update_interval_s": "Hoe vaak de regelaar draait. 10 s is het aanbevolen minimum. Niet onder 5 s instellen.",
           "smoothing_window_s": "Voortschrijdend gemiddelde om P1-sensorruis te filteren. 8 s werkt goed voor de meeste P1-meters.",
-          "budget_enabled": "Maximeer hoeveel kWh je per periode mag terugleveren. Zodra het budget op is forceert de limiter 0 W tot de volgende periode begint.",
+          "budget_enabled": "Indien aan: de omvormer levert vrij terug (limiter slaapt) tot het ingestelde kWh-budget op is. Daarna wordt teruglevering naar 0 W geforceerd tot de volgende periode begint. De gekozen modus is tijdelijk uitgeschakeld zolang een budget actief is.",
           "budget_kwh": "Totaal aantal kWh dat je binnen de gekozen periode mag terugleveren.",
           "budget_period": "Wanneer de teller reset: dagelijks om 00:00, maandelijks op de 1e, of jaarlijks op 1 januari.",
           "budget_notify_pct": "Stuur een notificatie zodra dit percentage is verbruikt. Op 0 zetten = geen melding."
@@ -221,6 +221,7 @@
           "voltage_high": "Spanningsbescherming actief",
           "write_error": "Schrijffout",
           "starting": "Opstarten",
+          "budget_free": "Vrije export — budget over",
           "budget_exhausted": "Exportbudget op"
         }
       },

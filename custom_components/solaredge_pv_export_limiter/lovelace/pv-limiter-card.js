@@ -19,6 +19,7 @@ const STATUS_CHIPS = {
   voltage_high: { label: "Voltage high", color: "#d9534f" },
   write_error: { label: "Write error", color: "#d9534f" },
   starting: { label: "Starting", color: "#5bc0de" },
+  budget_free: { label: "Free export", color: "#3eb049" },
   budget_exhausted: { label: "Budget reached", color: "#d9534f" },
 };
 
@@ -297,7 +298,7 @@ window.customCards.push({
 });
 
 console.info(
-  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.3 ",
+  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.3-beta3 ",
   "color: white; background: #03a9f4; font-weight: 700;",
   "color: #03a9f4; background: white; font-weight: 700;"
 );

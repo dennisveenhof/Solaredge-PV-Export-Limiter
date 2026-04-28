@@ -135,7 +135,7 @@
           "hysteresis_pct": "Minimum change (%) before a new limit is written to the inverter. Prevents excessive Modbus writes. Default 1.5% works well.",
           "update_interval_s": "How often the control loop runs. 10 s recommended. Do not go below 5 s.",
           "smoothing_window_s": "Rolling average window for P1 sensor noise rejection. 8 s works well for most P1 meters.",
-          "budget_enabled": "Cap how much energy may be exported per period. When the cap is reached, the limiter forces 0 W export until the next period starts.",
+          "budget_enabled": "When enabled, the inverter exports freely (no limiter) until the configured kWh budget is used up. After that, export is forced to 0 W until the next period starts. The selected operating mode is suspended while a budget is active.",
           "budget_kwh": "Total exportable kWh allowed within the chosen period.",
           "budget_period": "When the counter resets: every day at 00:00, every month on the 1st, or every year on January 1st.",
           "budget_notify_pct": "Send a notification once this percentage of the budget is used. Set to 0 to disable warnings."
@@ -221,6 +221,7 @@
           "voltage_high": "Voltage protection active",
           "write_error": "Write error",
           "starting": "Starting",
+          "budget_free": "Free export — budget remaining",
           "budget_exhausted": "Export budget exhausted"
         }
       },

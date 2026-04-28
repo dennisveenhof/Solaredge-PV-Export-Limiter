@@ -105,6 +105,7 @@ class Status(StrEnum):
     VOLTAGE_HIGH = "voltage_high"
     WRITE_ERROR = "write_error"
     STARTING = "starting"
+    BUDGET_FREE = "budget_free"
     BUDGET_EXHAUSTED = "budget_exhausted"
 
 
