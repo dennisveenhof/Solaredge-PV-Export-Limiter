@@ -36,24 +36,42 @@ PLATFORMS: list[Platform] = [
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the bundled Lovelace card once for the whole instance."""
+    """Serve the bundled Lovelace card JS file."""
     card_path = Path(__file__).parent / "lovelace" / "pv-limiter-card.js"
     if card_path.is_file():
-        try:
-            from homeassistant.components.frontend import add_extra_js_url
-
-            hass.http.register_static_path(
-                LOVELACE_CARD_URL, str(card_path), cache_headers=True
-            )
-            add_extra_js_url(hass, LOVELACE_CARD_URL)
-        except Exception as err:  # pragma: no cover - defensive
-            _LOGGER.warning("Could not register Lovelace card: %s", err)
+        hass.http.register_static_path(
+            LOVELACE_CARD_URL, str(card_path), cache_headers=False
+        )
     return True
+
+
+async def _async_register_card_resource(hass: HomeAssistant) -> None:
+    """Add the card JS to Lovelace resources (idempotent, persists across restarts)."""
+    try:
+        lovelace = hass.data.get("lovelace")
+        if lovelace:
+            resources = lovelace.get("resources")
+            if resources is not None:
+                await resources.async_load()
+                existing = {r.get("url") for r in resources.async_items()}
+                if LOVELACE_CARD_URL not in existing:
+                    await resources.async_create_item(
+                        {"res_type": "module", "url": LOVELACE_CARD_URL}
+                    )
+                return
+        # Fallback: YAML-mode Lovelace or older HA
+        from homeassistant.components.frontend import add_extra_js_url
+
+        add_extra_js_url(hass, LOVELACE_CARD_URL)
+    except Exception as err:
+        _LOGGER.warning("Could not register Lovelace card resource: %s", err)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up a PV Export Limiter entry."""
     hass.data.setdefault(DOMAIN, {})
+
+    await _async_register_card_resource(hass)
 
     coordinator = PVExportLimiterCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
