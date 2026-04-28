@@ -1,0 +1,204 @@
+{
+  "title": "Solaredge PV Export Limiter",
+  "config": {
+    "abort": {
+      "already_configured": "Solaredge PV Export Limiter is al geconfigureerd.",
+      "single_instance_allowed": "Slechts één Solaredge PV Export Limiter instantie wordt ondersteund."
+    },
+    "error": {
+      "entity_not_found": "Geselecteerde entity bestaat niet.",
+      "must_be_number_entity": "Moet een number-entity zijn (instelbare inverter limit).",
+      "import_export_same": "Import- en export-sensors moeten verschillende entities zijn."
+    },
+    "step": {
+      "user": {
+        "title": "Welkom bij Solaredge PV Export Limiter",
+        "description": "Deze wizard koppelt je SolarEdge omvormer en P1-meter zodat de integratie de teruglevering aan het net dynamisch kan begrenzen.\n\nControleer voordat je verdergaat dat:\n- De SolarEdge Modbus Multi integratie geïnstalleerd is en data ontvangt\n- Modbus TCP aan staat op je omvormer (SetApp → Site Communication → Modbus)\n- Je P1 / DSMR slimme meter live import/export-vermogen toont"
+      },
+      "inverter": {
+        "title": "SolarEdge omvormer-sensors",
+        "description": "Kies de sensor die je huidige AC-vermogen toont, en de instelbare number-entity die de actieve power limit regelt.",
+        "data": {
+          "inverter_ac_power_entity": "Omvormer AC-vermogen sensor",
+          "inverter_limit_entity": "Active power limit (instelbaar)"
+        }
+      },
+      "grid_meter": {
+        "title": "P1 slimme meter",
+        "description": "Selecteer de sensors die je netafname (import) en teruglevering (export) tonen.",
+        "data": {
+          "grid_import_entity": "Netafname sensor (W)",
+          "grid_export_entity": "Teruglevering sensor (W)"
+        }
+      },
+      "inverter_params": {
+        "title": "Omvormer-parameters",
+        "description": "Stel de regelaar af. Een korter update-interval reageert sneller maar schrijft vaker naar de omvormer. Standaardwaarden werken voor de meeste setups.",
+        "data": {
+          "inverter_nominal_w": "Omvormer nominaal vermogen (W)",
+          "update_interval_s": "Update-interval (seconden)",
+          "smoothing_window_s": "Smoothing-venster (seconden)",
+          "hysteresis_pct": "Hysteresis (% delta voor schrijfactie)"
+        }
+      },
+      "optional": {
+        "title": "Optionele beschermingen",
+        "description": "Schakel spanningsbescherming in als je netspanning soms boven 250 V uitkomt (veroorzaakt inverter-trips). Schakel tarief-bewustzijn in om automatisch naar 'Negatieve prijs'-modus te wisselen bij negatieve EPEX-prijzen. Beide optioneel.",
+        "data": {
+          "grid_voltage_entity": "Netspanning sensor (optioneel)",
+          "voltage_protection_enabled": "Spanningsbescherming inschakelen",
+          "voltage_warning_v": "Spanning-waarschuwingsdrempel (V)",
+          "voltage_recovery_v": "Spanning-hersteldrempel (V)",
+          "tariff_price_entity": "Energieprijs-sensor (optioneel)",
+          "tariff_enabled": "Tarief-gebaseerde modus inschakelen",
+          "tariff_negative_threshold": "Drempel negatieve prijs (€/kWh)",
+          "tariff_high_threshold": "Drempel hoge prijs (€/kWh)"
+        }
+      },
+      "setpoints": {
+        "title": "Setpoints per modus",
+        "description": "Stel de maximale teruglevering (W) in per modus. De limiter houdt de export op of onder het setpoint van de actieve modus.",
+        "data": {
+          "setpoint_normal_w": "Normale modus (standaard 50 W)",
+          "setpoint_vacation_w": "Vakantiemodus (standaard 0 W)",
+          "setpoint_negative_price_w": "Negatieve prijs (standaard 0 W)",
+          "setpoint_wide_w": "Ruim (standaard 200 W)",
+          "initial_mode": "Start in deze modus",
+          "enabled_at_start": "Limiter direct inschakelen"
+        }
+      },
+      "finish": {
+        "title": "Bijna klaar",
+        "description": "Optioneel: kies een notify-target voor failsafe-meldingen (bv. mobile_app_jouwtelefoon). Leeg laten om over te slaan.",
+        "data": {
+          "notify_target": "Notificatie-service (zonder 'notify.' prefix)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solaredge PV Export Limiter opties",
+        "description": "Stel de limiter op elk moment bij. Wijzigingen worden van kracht na een korte reload.",
+        "data": {
+          "hysteresis_pct": "Hysteresis (%)",
+          "update_interval_s": "Update-interval (seconden)",
+          "smoothing_window_s": "Smoothing-venster (seconden)",
+          "setpoint_normal_w": "Setpoint Normaal (W)",
+          "setpoint_vacation_w": "Setpoint Vakantie (W)",
+          "setpoint_negative_price_w": "Setpoint Negatieve prijs (W)",
+          "setpoint_wide_w": "Setpoint Ruim (W)",
+          "voltage_protection_enabled": "Spanningsbescherming aan",
+          "voltage_warning_v": "Spanning-waarschuwingsdrempel (V)",
+          "tariff_enabled": "Tarief-bewustzijn aan",
+          "tariff_negative_threshold": "Drempel negatieve prijs (€/kWh)",
+          "tariff_high_threshold": "Drempel hoge prijs (€/kWh)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "normal": "Normaal",
+        "vacation": "Vakantie",
+        "negative_price": "Negatieve prijs",
+        "wide": "Ruim",
+        "manual": "Handmatig",
+        "off": "Uit"
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "limiter_active": {
+        "name": "Limiter actief"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Bedrijfsmodus",
+        "state": {
+          "normal": "Normaal",
+          "vacation": "Vakantie",
+          "negative_price": "Negatieve prijs",
+          "wide": "Ruim",
+          "manual": "Handmatig",
+          "off": "Uit"
+        }
+      }
+    },
+    "number": {
+      "setpoint_manual": {
+        "name": "Handmatig setpoint"
+      },
+      "hysteresis": {
+        "name": "Hysteresis"
+      },
+      "nominal": {
+        "name": "Omvormer nominaal vermogen"
+      }
+    },
+    "sensor": {
+      "load": {
+        "name": "Huishoudverbruik"
+      },
+      "target_w": {
+        "name": "PV-doel"
+      },
+      "target_pct": {
+        "name": "Doel-limit"
+      },
+      "current_pct": {
+        "name": "Huidige limit"
+      },
+      "curtailment_w": {
+        "name": "Curtailment-vermogen"
+      },
+      "curtailment_kwh": {
+        "name": "Curtailment-energie"
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "Werkt",
+          "disabled": "Uitgeschakeld",
+          "no_pv": "Geen PV-opwek",
+          "sensor_loss": "Sensor niet beschikbaar",
+          "voltage_high": "Spanningsbescherming actief",
+          "write_error": "Schrijffout",
+          "starting": "Opstarten"
+        }
+      }
+    },
+    "binary_sensor": {
+      "anomaly": {
+        "name": "Anomalie gedetecteerd"
+      },
+      "voltage_warning": {
+        "name": "Spanning-waarschuwing"
+      }
+    }
+  },
+  "services": {
+    "recalculate": {
+      "name": "Nu herberekenen",
+      "description": "Forceer onmiddellijk een herberekening en schrijfactie."
+    },
+    "reset_to_100": {
+      "name": "Reset limit naar 100%",
+      "description": "Zet de SolarEdge active power limit op 100% (geen begrenzing)."
+    },
+    "set_mode": {
+      "name": "Stel modus in",
+      "description": "Wissel de bedrijfsmodus voor alle geconfigureerde entries.",
+      "fields": {
+        "mode": {
+          "name": "Modus",
+          "description": "Doelmodus."
+        }
+      }
+    }
+  }
+}

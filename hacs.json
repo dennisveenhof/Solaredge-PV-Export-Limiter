@@ -1,0 +1,8 @@
+{
+  "name": "Solaredge PV Export Limiter",
+  "render_readme": true,
+  "country": ["NL", "BE", "DE"],
+  "homeassistant": "2024.1.0",
+  "zip_release": true,
+  "filename": "solaredge_pv_export_limiter.zip"
+}

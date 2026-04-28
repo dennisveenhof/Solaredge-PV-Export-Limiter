@@ -1,0 +1,69 @@
+---
+name: Bug report
+description: Report a problem with Solaredge PV Export Limiter
+title: "[Bug] "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report.
+
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      placeholder: 2026.4.x
+    validations:
+      required: true
+
+  - type: input
+    id: inverter-model
+    attributes:
+      label: SolarEdge inverter model
+      placeholder: SE4K-RW0TEBEN4
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug. Include the operating mode, time of day, weather, and what
+        the limiter / export sensor showed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste log lines from `home-assistant.log` filtered on `pv_export_limiter`.
+      render: shell
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Pre-flight
+      options:
+        - label: SolarEdge Modbus Multi integration is installed and reading correctly
+          required: true
+        - label: Modbus TCP is enabled on the inverter
+          required: true
+        - label: I have searched existing issues
+          required: true

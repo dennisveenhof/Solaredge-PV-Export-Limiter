@@ -1,0 +1,38 @@
+---
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync manifest version with tag
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "Releasing version: $VERSION"
+          jq --arg v "$VERSION" '.version = $v' \
+            custom_components/solaredge_pv_export_limiter/manifest.json \
+            > manifest.tmp
+          mv manifest.tmp custom_components/solaredge_pv_export_limiter/manifest.json
+
+      - name: Create release ZIP
+        run: |
+          cd custom_components/solaredge_pv_export_limiter
+          zip -r ../../solaredge_pv_export_limiter.zip .
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: solaredge_pv_export_limiter.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, 'rc') || contains(github.ref, 'beta') || contains(github.ref, 'alpha') }}

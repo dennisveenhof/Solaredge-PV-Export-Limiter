@@ -1,0 +1,32 @@
+---
+recalculate:
+  name: Recalculate now
+  description: >
+    Forces an immediate recompute of the inverter limit on every active configuration entry,
+    bypassing the polling interval. Useful after manual changes or for scripting.
+
+reset_to_100:
+  name: Reset limit to 100%
+  description: >
+    Sets the SolarEdge active power limit to 100% (no curtailment). Use as a safe default
+    or when temporarily disabling the limiter.
+
+set_mode:
+  name: Set operating mode
+  description: >
+    Switch all active Solaredge PV Export Limiter entries to the specified operating mode.
+  fields:
+    mode:
+      name: Mode
+      description: Target operating mode.
+      required: true
+      example: vacation
+      selector:
+        select:
+          options:
+            - normal
+            - vacation
+            - negative_price
+            - wide
+            - manual
+            - off

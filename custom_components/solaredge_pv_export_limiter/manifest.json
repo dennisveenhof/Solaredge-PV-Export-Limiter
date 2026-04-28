@@ -1,0 +1,14 @@
+{
+  "domain": "solaredge_pv_export_limiter",
+  "name": "Solaredge PV Export Limiter",
+  "version": "0.1.0",
+  "documentation": "https://github.com/dennisveenhof/Solaredge-PV-Export-Limiter",
+  "issue_tracker": "https://github.com/dennisveenhof/Solaredge-PV-Export-Limiter/issues",
+  "codeowners": ["@dennisveenhof"],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "integration_type": "service",
+  "requirements": [],
+  "dependencies": ["http"],
+  "after_dependencies": ["solaredge_modbus_multi", "dsmr"]
+}

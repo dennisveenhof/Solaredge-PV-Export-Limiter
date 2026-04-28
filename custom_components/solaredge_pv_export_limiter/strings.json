@@ -1,0 +1,204 @@
+{
+  "title": "Solaredge PV Export Limiter",
+  "config": {
+    "abort": {
+      "already_configured": "Solaredge PV Export Limiter is already configured.",
+      "single_instance_allowed": "Only one Solaredge PV Export Limiter instance is supported."
+    },
+    "error": {
+      "entity_not_found": "Selected entity does not exist.",
+      "must_be_number_entity": "Must be a number entity (writable inverter limit).",
+      "import_export_same": "Import and export sensors must be different entities."
+    },
+    "step": {
+      "user": {
+        "title": "Welcome to Solaredge PV Export Limiter",
+        "description": "This wizard will guide you through linking your SolarEdge inverter and P1 smart meter so the integration can dynamically limit feed-in to the grid.\n\nBefore continuing, make sure:\n- The SolarEdge Modbus Multi integration is installed and reading data\n- Modbus TCP is enabled on your inverter (SetApp → Site Communication → Modbus)\n- Your P1 / DSMR smart meter shows live import/export power"
+      },
+      "inverter": {
+        "title": "SolarEdge inverter sensors",
+        "description": "Pick the sensor showing your inverter's current AC output, and the writable number entity that controls the active power limit.",
+        "data": {
+          "inverter_ac_power_entity": "Inverter AC power sensor",
+          "inverter_limit_entity": "Active power limit (writable)"
+        }
+      },
+      "grid_meter": {
+        "title": "P1 smart meter",
+        "description": "Select the sensors that show your grid import (consumption) and grid export (production) power.",
+        "data": {
+          "grid_import_entity": "Grid import sensor (W)",
+          "grid_export_entity": "Grid export sensor (W)"
+        }
+      },
+      "inverter_params": {
+        "title": "Inverter parameters",
+        "description": "Tune the controller. Lower update intervals respond faster but write more often to the inverter. Default values work well for most setups.",
+        "data": {
+          "inverter_nominal_w": "Inverter nominal power (W)",
+          "update_interval_s": "Update interval (seconds)",
+          "smoothing_window_s": "Smoothing window (seconds)",
+          "hysteresis_pct": "Hysteresis (% delta to trigger a write)"
+        }
+      },
+      "optional": {
+        "title": "Optional protections",
+        "description": "Enable voltage protection if your grid voltage occasionally exceeds 250 V (causes inverter trips). Enable tariff awareness to automatically switch to 'Negative price' mode when EPEX prices are negative. Both are optional.",
+        "data": {
+          "grid_voltage_entity": "Grid voltage sensor (optional)",
+          "voltage_protection_enabled": "Enable voltage protection",
+          "voltage_warning_v": "Voltage warning threshold (V)",
+          "voltage_recovery_v": "Voltage recovery threshold (V)",
+          "tariff_price_entity": "Energy price sensor (optional)",
+          "tariff_enabled": "Enable tariff-based mode switching",
+          "tariff_negative_threshold": "Negative price threshold (€/kWh)",
+          "tariff_high_threshold": "High price threshold (€/kWh)"
+        }
+      },
+      "setpoints": {
+        "title": "Mode setpoints",
+        "description": "Set the maximum feed-in (W) for each operating mode. The limiter will keep grid export at or below the active mode's setpoint.",
+        "data": {
+          "setpoint_normal_w": "Normal mode (default 50 W)",
+          "setpoint_vacation_w": "Vacation mode (default 0 W)",
+          "setpoint_negative_price_w": "Negative price mode (default 0 W)",
+          "setpoint_wide_w": "Wide mode (default 200 W)",
+          "initial_mode": "Start in this mode",
+          "enabled_at_start": "Enable limiter immediately"
+        }
+      },
+      "finish": {
+        "title": "Almost done",
+        "description": "Optionally pick a notify target for failsafe alerts (e.g. mobile_app_yourphone). Leave empty to skip.",
+        "data": {
+          "notify_target": "Notification service (without 'notify.' prefix)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solaredge PV Export Limiter options",
+        "description": "Tune the limiter at any time. Changes take effect after a brief reload.",
+        "data": {
+          "hysteresis_pct": "Hysteresis (%)",
+          "update_interval_s": "Update interval (seconds)",
+          "smoothing_window_s": "Smoothing window (seconds)",
+          "setpoint_normal_w": "Normal setpoint (W)",
+          "setpoint_vacation_w": "Vacation setpoint (W)",
+          "setpoint_negative_price_w": "Negative price setpoint (W)",
+          "setpoint_wide_w": "Wide setpoint (W)",
+          "voltage_protection_enabled": "Voltage protection enabled",
+          "voltage_warning_v": "Voltage warning threshold (V)",
+          "tariff_enabled": "Tariff awareness enabled",
+          "tariff_negative_threshold": "Negative price threshold (€/kWh)",
+          "tariff_high_threshold": "High price threshold (€/kWh)"
+        }
+      }
+    }
+  },
+  "selector": {
+    "mode": {
+      "options": {
+        "normal": "Normal",
+        "vacation": "Vacation",
+        "negative_price": "Negative price",
+        "wide": "Wide",
+        "manual": "Manual",
+        "off": "Off"
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "limiter_active": {
+        "name": "Limiter active"
+      }
+    },
+    "select": {
+      "mode": {
+        "name": "Operating mode",
+        "state": {
+          "normal": "Normal",
+          "vacation": "Vacation",
+          "negative_price": "Negative price",
+          "wide": "Wide",
+          "manual": "Manual",
+          "off": "Off"
+        }
+      }
+    },
+    "number": {
+      "setpoint_manual": {
+        "name": "Manual setpoint"
+      },
+      "hysteresis": {
+        "name": "Hysteresis"
+      },
+      "nominal": {
+        "name": "Inverter nominal power"
+      }
+    },
+    "sensor": {
+      "load": {
+        "name": "Household load"
+      },
+      "target_w": {
+        "name": "PV target"
+      },
+      "target_pct": {
+        "name": "Target limit"
+      },
+      "current_pct": {
+        "name": "Current limit"
+      },
+      "curtailment_w": {
+        "name": "Curtailment power"
+      },
+      "curtailment_kwh": {
+        "name": "Curtailment energy"
+      },
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "Working",
+          "disabled": "Disabled",
+          "no_pv": "No PV production",
+          "sensor_loss": "Sensor unavailable",
+          "voltage_high": "Voltage protection active",
+          "write_error": "Write error",
+          "starting": "Starting"
+        }
+      }
+    },
+    "binary_sensor": {
+      "anomaly": {
+        "name": "Anomaly detected"
+      },
+      "voltage_warning": {
+        "name": "Voltage warning"
+      }
+    }
+  },
+  "services": {
+    "recalculate": {
+      "name": "Recalculate now",
+      "description": "Force an immediate recompute and write."
+    },
+    "reset_to_100": {
+      "name": "Reset limit to 100%",
+      "description": "Sets the SolarEdge active power limit to 100% (no curtailment)."
+    },
+    "set_mode": {
+      "name": "Set operating mode",
+      "description": "Switch the operating mode for all configured entries.",
+      "fields": {
+        "mode": {
+          "name": "Mode",
+          "description": "Target operating mode."
+        }
+      }
+    }
+  }
+}

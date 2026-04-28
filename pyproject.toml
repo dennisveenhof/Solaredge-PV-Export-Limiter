@@ -1,0 +1,58 @@
+[project]
+name = "ha-solaredge-pv-export-limiter"
+version = "0.1.0"
+description = "Dynamic SolarEdge export limiter for Home Assistant"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+    "C4",   # flake8-comprehensions
+    "PT",   # flake8-pytest-style
+    "TID",  # flake8-tidy-imports
+    "PL",   # pylint
+]
+ignore = [
+    "PLR0913",  # too many arguments
+    "PLR2004",  # magic values (sometimes useful in tests)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "PLR2004", "TID252"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--cov=custom_components/solaredge_pv_export_limiter",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+]
+
+[tool.coverage.run]
+source = ["custom_components/solaredge_pv_export_limiter"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
