@@ -30,6 +30,7 @@ class PVLimiterCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    this._buildEntityMap();
     if (!this._rendered) {
       this._render();
       this._rendered = true;
@@ -42,10 +43,45 @@ class PVLimiterCard extends HTMLElement {
     return 6;
   }
 
+  _buildEntityMap() {
+    // Discover entities via the registry by matching unique_id = "{entry_id}_{key}".
+    // Robust against user-renamed entity_ids and HA's translation-based slug generation.
+    if (!this._hass || !this._hass.entities) return;
+    if (this._entityMap && this._entityMapPlatform === this._entryPrefix) return;
+
+    const map = {};
+    let entryId = null;
+    for (const ent of Object.values(this._hass.entities)) {
+      if (ent.platform !== this._entryPrefix) continue;
+      if (!ent.unique_id) continue;
+      // unique_id format: "{config_entry.entry_id}_{key}"
+      // entry_id is an HA-generated hex string (no underscores in practice).
+      const idx = ent.unique_id.indexOf("_");
+      if (idx < 0) continue;
+      const eid = ent.unique_id.slice(0, idx);
+      const key = ent.unique_id.slice(idx + 1);
+      if (!entryId) entryId = eid;
+      if (eid !== entryId) continue; // multiple entries — stick to first
+      map[key] = ent.entity_id;
+    }
+    this._entityMap = map;
+    this._entityMapPlatform = this._entryPrefix;
+  }
+
   _e(domain, name) {
     if (!this._hass) return null;
+    // Prefer registry-discovered entity_id (matches by key, regardless of name).
+    const mapped = this._entityMap && this._entityMap[name];
+    if (mapped) return this._hass.states[mapped];
+    // Fallback: legacy hardcoded pattern.
     const id = `${domain}.${this._entryPrefix}_${name}`;
     return this._hass.states[id];
+  }
+
+  _entityId(domain, name) {
+    const mapped = this._entityMap && this._entityMap[name];
+    if (mapped) return mapped;
+    return `${domain}.${this._entryPrefix}_${name}`;
   }
 
   _val(domain, name, fallback = "—") {
@@ -129,7 +165,7 @@ class PVLimiterCard extends HTMLElement {
       if (!btn) return;
       const mode = btn.dataset.mode;
       this._hass.callService("select", "select_option", {
-        entity_id: `select.${this._entryPrefix}_mode`,
+        entity_id: this._entityId("select", "mode"),
         option: mode,
       });
     });
@@ -141,10 +177,14 @@ class PVLimiterCard extends HTMLElement {
     const status = this._val("sensor", "status", "starting");
     const chip = STATUS_CHIPS[status] || { label: status, color: "#666" };
 
+    const pvEnt = this._e("sensor", "target_w");
+    const pvVal =
+      pvEnt && pvEnt.state !== "unknown" && pvEnt.state !== "unavailable"
+        ? Math.round(parseFloat(pvEnt.state))
+        : "—";
+
     const tiles = [
-      { label: "PV", value: this._val("sensor", "load") !== "—"
-        ? `${Math.round(parseFloat(this._hass.states[`sensor.${this._entryPrefix}_load`]?.state || 0) + parseFloat(this._hass.states[`sensor.${this._entryPrefix}_target_w`]?.state || 0) - parseFloat(this._hass.states[`sensor.${this._entryPrefix}_load`]?.state || 0))}` : "—",
-        unit: "W", custom: this._val("sensor", "target_w") },
+      { label: "PV", value: pvVal, unit: "W" },
       { label: "Load", value: this._val("sensor", "load"), unit: "W" },
       { label: "Target %", value: this._val("sensor", "target_pct"), unit: "%" },
       { label: "Curtail", value: this._val("sensor", "curtailment_w"), unit: "W" },
@@ -185,8 +225,8 @@ class PVLimiterCard extends HTMLElement {
     if (label) label.textContent = `${currentPct.toFixed(1)}%`;
 
     // Anomaly banner
-    const anomaly = this._hass.states[`binary_sensor.${this._entryPrefix}_anomaly`];
-    const voltage = this._hass.states[`binary_sensor.${this._entryPrefix}_voltage_warning`];
+    const anomaly = this._e("binary_sensor", "anomaly");
+    const voltage = this._e("binary_sensor", "voltage_warning");
     const banner = this.querySelector(".pvlim-anomaly");
     if (anomaly?.state === "on" || voltage?.state === "on") {
       banner.style.display = "block";
@@ -214,7 +254,7 @@ window.customCards.push({
 });
 
 console.info(
-  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.0 ",
+  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.1 ",
   "color: white; background: #03a9f4; font-weight: 700;",
   "color: #03a9f4; background: white; font-weight: 700;"
 );
