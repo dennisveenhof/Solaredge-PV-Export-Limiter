@@ -93,9 +93,8 @@ def safe_float(value: object) -> float | None:
     if value is None:
         return None
     if isinstance(value, (int, float)):
-        if isinstance(value, float) and (value != value):  # NaN  # noqa: PLR0124
-            return None
-        return float(value)
+        f = float(value)
+        return None if f != f else f  # NaN check  # noqa: PLR0124
     if isinstance(value, str):
         stripped = value.strip()
         if not stripped or stripped.lower() in {"unknown", "unavailable", "none", "nan"}:

@@ -541,9 +541,8 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         target_pct = clamp_pct(target_pct)
         current_pct = self._read_float(self._inverter_limit)
 
-        if not force and current_pct is not None:
-            if not should_write(target_pct, current_pct, self._hysteresis_pct):
-                return
+        if not force and current_pct is not None and not should_write(target_pct, current_pct, self._hysteresis_pct):
+            return
 
         try:
             await self.hass.services.async_call(

@@ -40,7 +40,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     card_path = Path(__file__).parent / "lovelace" / "pv-limiter-card.js"
     if card_path.is_file():
         try:
-            from homeassistant.components.http import StaticPathConfig
+            from homeassistant.components.http import StaticPathConfig  # noqa: PLC0415
 
             await hass.http.async_register_static_paths(
                 [StaticPathConfig(LOVELACE_CARD_URL, str(card_path), False)]
@@ -73,7 +73,7 @@ async def _async_register_card_resource(hass: HomeAssistant) -> None:
                     )
                 return
         # Fallback: YAML-mode Lovelace or older HA
-        from homeassistant.components.frontend import add_extra_js_url
+        from homeassistant.components.frontend import add_extra_js_url  # noqa: PLC0415
 
         add_extra_js_url(hass, LOVELACE_CARD_URL)
     except Exception as err:

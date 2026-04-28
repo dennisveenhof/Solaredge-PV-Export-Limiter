@@ -9,6 +9,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     EntitySelector,
@@ -118,8 +119,6 @@ def _suggest_inverter_nominal(hass: HomeAssistant, entity_id: str) -> int:
     entry = registry.async_get(entity_id)
     if not entry or not entry.device_id:
         return DEFAULT_INVERTER_NOMINAL_W
-    from homeassistant.helpers import device_registry as dr
-
     device = dr.async_get(hass).async_get(entry.device_id)
     if not device:
         return DEFAULT_INVERTER_NOMINAL_W
