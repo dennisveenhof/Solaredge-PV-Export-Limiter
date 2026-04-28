@@ -44,28 +44,37 @@ class PVLimiterCard extends HTMLElement {
   }
 
   _buildEntityMap() {
-    // Discover entities via the registry by matching unique_id = "{entry_id}_{key}".
-    // Robust against user-renamed entity_ids and HA's translation-based slug generation.
-    if (!this._hass || !this._hass.entities) return;
-    if (this._entityMap && this._entityMapPlatform === this._entryPrefix) return;
+    // hass.entities does NOT contain unique_id — fetch the full entity registry
+    // via WebSocket. Map keys come from unique_id pattern "{entry_id}_{key}".
+    // Robust against user-renamed entity_ids and translation-based slug generation.
+    if (!this._hass) return;
+    if (this._entityMap || this._entityMapLoading) return;
+    this._entityMapLoading = true;
 
-    const map = {};
-    let entryId = null;
-    for (const ent of Object.values(this._hass.entities)) {
-      if (ent.platform !== this._entryPrefix) continue;
-      if (!ent.unique_id) continue;
-      // unique_id format: "{config_entry.entry_id}_{key}"
-      // entry_id is an HA-generated hex string (no underscores in practice).
-      const idx = ent.unique_id.indexOf("_");
-      if (idx < 0) continue;
-      const eid = ent.unique_id.slice(0, idx);
-      const key = ent.unique_id.slice(idx + 1);
-      if (!entryId) entryId = eid;
-      if (eid !== entryId) continue; // multiple entries — stick to first
-      map[key] = ent.entity_id;
-    }
-    this._entityMap = map;
-    this._entityMapPlatform = this._entryPrefix;
+    this._hass
+      .callWS({ type: "config/entity_registry/list" })
+      .then((entries) => {
+        const map = {};
+        let entryId = null;
+        for (const ent of entries) {
+          if (ent.platform !== this._entryPrefix) continue;
+          if (!ent.unique_id) continue;
+          const idx = ent.unique_id.indexOf("_");
+          if (idx < 0) continue;
+          const eid = ent.unique_id.slice(0, idx);
+          const key = ent.unique_id.slice(idx + 1);
+          if (!entryId) entryId = eid;
+          if (eid !== entryId) continue;
+          map[key] = ent.entity_id;
+        }
+        this._entityMap = map;
+        this._entityMapLoading = false;
+        if (this._rendered) this._update();
+      })
+      .catch((err) => {
+        this._entityMapLoading = false;
+        console.warn("[pv-limiter-card] registry fetch failed", err);
+      });
   }
 
   _e(domain, name) {
@@ -254,7 +263,7 @@ window.customCards.push({
 });
 
 console.info(
-  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.1 ",
+  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.2 ",
   "color: white; background: #03a9f4; font-weight: 700;",
   "color: #03a9f4; background: white; font-weight: 700;"
 );
