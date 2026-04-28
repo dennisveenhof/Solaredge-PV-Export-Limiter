@@ -80,7 +80,7 @@ Before installing, you need:
 
 | Wizard | Dashboard | Curtailment |
 |---|---|---|
-| ![wizard](screenshots/wizard-step1.png) | ![dashboard](screenshots/dashboard.png) | ![curtailment](screenshots/curtailment-graph.png) |
+| ![wizard](screenshots/wizard.png) | ![dashboard](screenshots/dashboard.png) | ![curtailment](screenshots/curtailment-graph.png) |
 
 ## Contributing
 
