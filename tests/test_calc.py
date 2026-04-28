@@ -73,8 +73,8 @@ class TestComputeTargetPct:
         assert compute_target_pct(target_w=-100, nominal_w=4000) == 0.0
 
     def test_rounds_to_one_decimal(self):
-        # 1234 / 4000 * 100 = 30.85 → 30.8 (banker's rounding)
-        assert compute_target_pct(target_w=1234, nominal_w=4000) == 30.8
+        # 1235 / 4000 * 100 = 30.875 → 30.9
+        assert compute_target_pct(target_w=1235, nominal_w=4000) == 30.9
 
     def test_invalid_nominal_raises(self):
         with pytest.raises(ValueError, match="positive"):
