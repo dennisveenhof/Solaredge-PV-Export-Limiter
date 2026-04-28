@@ -378,6 +378,19 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
 
         # Compute load + target.
         load_w = compute_load(pv_smooth, imp_smooth, exp_smooth)
+
+        # Guard: deeply negative load means the PV sensor is underreporting while
+        # the inverter is still producing (e.g. Modbus hiccup returning 0 W).
+        # Fall back to import as a conservative load estimate so we still limit.
+        if load_w < -100:
+            _LOGGER.warning(
+                "Computed load %.0f W is negative (PV=%.0f W, import=%.0f W, "
+                "export=%.0f W) — PV sensor may be underreporting; using grid "
+                "import as load estimate to prevent runaway export",
+                load_w, pv_smooth, imp_smooth, exp_smooth,
+            )
+            load_w = imp_smooth
+
         setpoint = effective_setpoint_w(
             mode=self._mode,
             setpoint_normal=self._setpoint_normal,
@@ -394,8 +407,9 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         if voltage_warning:
             target_pct = 0.0
             status = Status.VOLTAGE_HIGH
-        elif pv_smooth < 50 and current_pct >= 99.0:
-            # No PV — keep limit at 100% but report no_pv status (no extra writes)
+        elif pv_smooth < 50 and current_pct >= 99.0 and exp_smooth < 100:
+            # Genuine no-production: PV sensor low AND no significant export.
+            # If export is high the sensor is likely glitching — fall through to OK.
             target_pct = 100.0
             status = Status.NO_PV
         else:
