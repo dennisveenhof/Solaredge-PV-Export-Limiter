@@ -105,6 +105,7 @@ class Status(StrEnum):
     VOLTAGE_HIGH = "voltage_high"
     WRITE_ERROR = "write_error"
     STARTING = "starting"
+    BUDGET_EXHAUSTED = "budget_exhausted"
 
 
 # ─── Config flow / options keys ───────────────────────────────────────────
@@ -136,6 +137,22 @@ CONF_TARIFF_HIGH_THRESHOLD: Final = "tariff_high_threshold"
 CONF_NOTIFY_TARGET: Final = "notify_target"
 CONF_INITIAL_MODE: Final = "initial_mode"
 CONF_ENABLED_AT_START: Final = "enabled_at_start"
+
+# ─── Export budget ────────────────────────────────────────────────────────
+CONF_BUDGET_ENABLED: Final = "budget_enabled"
+CONF_BUDGET_KWH: Final = "budget_kwh"
+CONF_BUDGET_PERIOD: Final = "budget_period"
+CONF_BUDGET_NOTIFY_PCT: Final = "budget_notify_pct"
+
+BUDGET_PERIOD_DAY: Final = "day"
+BUDGET_PERIOD_MONTH: Final = "month"
+BUDGET_PERIOD_YEAR: Final = "year"
+BUDGET_PERIODS: Final = (BUDGET_PERIOD_DAY, BUDGET_PERIOD_MONTH, BUDGET_PERIOD_YEAR)
+
+DEFAULT_BUDGET_ENABLED: Final = False
+DEFAULT_BUDGET_KWH: Final = 10.0
+DEFAULT_BUDGET_PERIOD: Final = BUDGET_PERIOD_DAY
+DEFAULT_BUDGET_NOTIFY_PCT: Final = 80
 
 # ─── Services ─────────────────────────────────────────────────────────────
 SERVICE_RECALCULATE: Final = "recalculate"

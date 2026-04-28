@@ -19,6 +19,7 @@ const STATUS_CHIPS = {
   voltage_high: { label: "Voltage high", color: "#d9534f" },
   write_error: { label: "Write error", color: "#d9534f" },
   starting: { label: "Starting", color: "#5bc0de" },
+  budget_exhausted: { label: "Budget reached", color: "#d9534f" },
 };
 
 class PVLimiterCard extends HTMLElement {
@@ -145,6 +146,10 @@ class PVLimiterCard extends HTMLElement {
           }
           .pvlim-section-title { font-weight: 600; margin-bottom: 8px; font-size: 14px; }
           .pvlim-anomaly { padding: 10px; border-radius: 8px; background: #fde9e7; color: #b94c47; margin-top: 12px; font-size: 13px; }
+          .pvlim-budget-fill {
+            height: 100%; transition: width .4s ease;
+            background: linear-gradient(90deg, #3eb049 0%, #e8b500 70%, #d9534f 100%);
+          }
         </style>
 
         <div class="pvlim-row pvlim-tiles"></div>
@@ -159,6 +164,16 @@ class PVLimiterCard extends HTMLElement {
             <div class="pvlim-gauge-target" style="left: 100%;"></div>
           </div>
           <div class="pvlim-gauge-label" style="min-width: 50px; text-align: right; font-weight: 600;">100%</div>
+        </div>
+
+        <div class="pvlim-budget-section" style="display: none;">
+          <div class="pvlim-section-title">Export budget</div>
+          <div class="pvlim-gauge-wrap">
+            <div class="pvlim-gauge-bar">
+              <div class="pvlim-budget-fill" style="width: 0%;"></div>
+            </div>
+            <div class="pvlim-budget-label" style="min-width: 110px; text-align: right; font-weight: 600;">— / — kWh</div>
+          </div>
         </div>
 
         <div class="pvlim-anomaly" style="display: none;"></div>
@@ -214,8 +229,8 @@ class PVLimiterCard extends HTMLElement {
     const currentMode = this._val("select", "mode", "normal");
     const allModes = ["normal", "vacation", "negative_price", "wide", "manual", "off"];
     const modeLabels = {
-      normal: "Normal", vacation: "Vacation", negative_price: "Neg. price",
-      wide: "Wide", manual: "Manual", off: "Off",
+      normal: "Default", vacation: "Zero export", negative_price: "Neg. tariff",
+      wide: "Permissive", manual: "Manual", off: "Disabled",
     };
     this.querySelector(".pvlim-modes").innerHTML = allModes
       .map(
@@ -232,6 +247,25 @@ class PVLimiterCard extends HTMLElement {
     if (fill) fill.style.width = `${Math.max(0, Math.min(100, currentPct))}%`;
     if (target) target.style.left = `${Math.max(0, Math.min(100, targetPct))}%`;
     if (label) label.textContent = `${currentPct.toFixed(1)}%`;
+
+    // Export budget — only shown when the integration reports a configured budget.
+    const budgetSection = this.querySelector(".pvlim-budget-section");
+    const usedEnt = this._e("sensor", "budget_used_kwh");
+    const remainingEnt = this._e("sensor", "budget_remaining_kwh");
+    if (budgetSection && usedEnt && remainingEnt) {
+      const used = parseFloat(usedEnt.state) || 0;
+      const remaining = parseFloat(remainingEnt.state) || 0;
+      const total = used + remaining;
+      const visible = total > 0;
+      budgetSection.style.display = visible ? "block" : "none";
+      if (visible) {
+        const pctUsed = Math.max(0, Math.min(100, (used / total) * 100));
+        const fillEl = budgetSection.querySelector(".pvlim-budget-fill");
+        const labelEl = budgetSection.querySelector(".pvlim-budget-label");
+        if (fillEl) fillEl.style.width = `${pctUsed}%`;
+        if (labelEl) labelEl.textContent = `${used.toFixed(1)} / ${total.toFixed(1)} kWh`;
+      }
+    }
 
     // Anomaly banner
     const anomaly = this._e("binary_sensor", "anomaly");
@@ -263,7 +297,7 @@ window.customCards.push({
 });
 
 console.info(
-  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.2 ",
+  "%c SOLAREDGE-PV-LIMITER-CARD %c v0.1.3 ",
   "color: white; background: #03a9f4; font-weight: 700;",
   "color: #03a9f4; background: white; font-weight: 700;"
 );

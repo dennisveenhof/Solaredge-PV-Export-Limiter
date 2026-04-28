@@ -5,7 +5,12 @@ This module has no Home Assistant imports and is fully unit-testable.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from .const import (
+    BUDGET_PERIOD_DAY,
+    BUDGET_PERIOD_MONTH,
+    BUDGET_PERIOD_YEAR,
     CURTAILMENT_DETECT_FRACTION,
     CURTAILMENT_LIMIT_THRESHOLD_PCT,
     INVERTER_MODEL_NOMINAL_MAP,
@@ -79,6 +84,48 @@ def detect_inverter_nominal(model: str | None, fallback_w: int) -> int:
         if key in upper:
             return value
     return fallback_w
+
+
+def integrate_kwh(power_w: float, elapsed_s: float) -> float:
+    """Convert a power sample over an elapsed window into energy (kWh).
+
+    Riemann-sum step: power times time. Negative power and negative durations
+    are clamped to zero — we never subtract from the budget counter.
+    """
+    if power_w <= 0 or elapsed_s <= 0:
+        return 0.0
+    return (power_w * elapsed_s) / 3_600_000.0
+
+
+def period_key(now: datetime, period: str) -> str:
+    """Return a string key identifying the current period bucket.
+
+    A change in this key between two calls signals a period boundary
+    (i.e. the budget counter must reset). Local time is assumed.
+    """
+    if period == BUDGET_PERIOD_DAY:
+        return now.strftime("%Y-%m-%d")
+    if period == BUDGET_PERIOD_MONTH:
+        return now.strftime("%Y-%m")
+    if period == BUDGET_PERIOD_YEAR:
+        return now.strftime("%Y")
+    return now.strftime("%Y-%m-%d")
+
+
+def compute_budget_status(used_kwh: float, budget_kwh: float) -> tuple[float, float, bool]:
+    """Return (used, remaining, is_exhausted) clamped to non-negative."""
+    used = max(0.0, used_kwh)
+    remaining = max(0.0, budget_kwh - used)
+    exhausted = budget_kwh > 0 and used >= budget_kwh
+    return (used, remaining, exhausted)
+
+
+def budget_remaining_pct(used_kwh: float, budget_kwh: float) -> float:
+    """Return the remaining-budget percentage, clamped to [0, 100]."""
+    if budget_kwh <= 0:
+        return 0.0
+    pct = (1.0 - (used_kwh / budget_kwh)) * 100.0
+    return round(max(0.0, min(100.0, pct)), 1)
 
 
 def effective_setpoint_w(

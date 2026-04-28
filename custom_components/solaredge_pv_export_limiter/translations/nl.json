@@ -121,16 +121,24 @@
           "voltage_warning_v": "Spanning-waarschuwingsdrempel (V)",
           "tariff_enabled": "Tarief-bewustzijn aan",
           "tariff_negative_threshold": "Drempel negatieve prijs (€/kWh)",
-          "tariff_high_threshold": "Drempel hoge prijs (€/kWh)"
+          "tariff_high_threshold": "Drempel hoge prijs (€/kWh)",
+          "budget_enabled": "Exportbudget aan",
+          "budget_kwh": "Exportbudget (kWh)",
+          "budget_period": "Budgetperiode",
+          "budget_notify_pct": "Waarschuw bij % gebruikt (0 = uit)"
         },
         "data_description": {
-          "setpoint_normal_w": "Maximale teruglevering in Normaal-modus. 50 W = kleine buffer zodat je niets afhaalt. 0 W = streef naar nul export. 200 W = ruime export toegestaan.",
-          "setpoint_vacation_w": "Gebruikt in Vakantie-modus. Typisch 0 W zodat er geen overschot wordt teruggeleverd als je weg bent.",
+          "setpoint_normal_w": "Maximale teruglevering in Standaard-modus. 50 W = kleine buffer zodat je niets afhaalt. 0 W = streef naar nul export. 200 W = ruime export toegestaan.",
+          "setpoint_vacation_w": "Gebruikt in Geen-export-modus. Typisch 0 W zodat er niets wordt teruggeleverd.",
           "setpoint_negative_price_w": "Gebruikt als de stroomprijs onder de negatieve drempel zakt. Typisch 0 W om te voorkomen dat je betaalt voor terugleveren.",
-          "setpoint_wide_w": "Gebruikt in Ruim-modus. Hogere waarde (bv. 200 W) als enige teruglevering acceptabel is.",
+          "setpoint_wide_w": "Gebruikt in Soepel-modus. Hogere waarde (bv. 200 W) als enige teruglevering acceptabel is.",
           "hysteresis_pct": "Minimale wijziging (%) voordat een nieuwe limiet naar de omvormer wordt geschreven. Voorkomt overmatig schrijven via Modbus. Standaard 1,5% werkt goed.",
           "update_interval_s": "Hoe vaak de regelaar draait. 10 s is het aanbevolen minimum. Niet onder 5 s instellen.",
-          "smoothing_window_s": "Voortschrijdend gemiddelde om P1-sensorruis te filteren. 8 s werkt goed voor de meeste P1-meters."
+          "smoothing_window_s": "Voortschrijdend gemiddelde om P1-sensorruis te filteren. 8 s werkt goed voor de meeste P1-meters.",
+          "budget_enabled": "Maximeer hoeveel kWh je per periode mag terugleveren. Zodra het budget op is forceert de limiter 0 W tot de volgende periode begint.",
+          "budget_kwh": "Totaal aantal kWh dat je binnen de gekozen periode mag terugleveren.",
+          "budget_period": "Wanneer de teller reset: dagelijks om 00:00, maandelijks op de 1e, of jaarlijks op 1 januari.",
+          "budget_notify_pct": "Stuur een notificatie zodra dit percentage is verbruikt. Op 0 zetten = geen melding."
         }
       }
     }
@@ -138,12 +146,19 @@
   "selector": {
     "mode": {
       "options": {
-        "normal": "Normaal",
-        "vacation": "Vakantie",
-        "negative_price": "Negatieve prijs",
-        "wide": "Ruim",
+        "normal": "Standaard",
+        "vacation": "Geen export",
+        "negative_price": "Negatief tarief",
+        "wide": "Soepel",
         "manual": "Handmatig",
         "off": "Uit"
+      }
+    },
+    "budget_period": {
+      "options": {
+        "day": "Dagelijks",
+        "month": "Maandelijks",
+        "year": "Jaarlijks"
       }
     }
   },
@@ -157,10 +172,10 @@
       "mode": {
         "name": "Bedrijfsmodus",
         "state": {
-          "normal": "Normaal",
-          "vacation": "Vakantie",
-          "negative_price": "Negatieve prijs",
-          "wide": "Ruim",
+          "normal": "Standaard",
+          "vacation": "Geen export",
+          "negative_price": "Negatief tarief",
+          "wide": "Soepel",
           "manual": "Handmatig",
           "off": "Uit"
         }
@@ -205,9 +220,13 @@
           "sensor_loss": "Sensor niet beschikbaar",
           "voltage_high": "Spanningsbescherming actief",
           "write_error": "Schrijffout",
-          "starting": "Opstarten"
+          "starting": "Opstarten",
+          "budget_exhausted": "Exportbudget op"
         }
-      }
+      },
+      "budget_used_kwh": { "name": "Exportbudget gebruikt" },
+      "budget_remaining_kwh": { "name": "Exportbudget resterend" },
+      "budget_remaining_pct": { "name": "Exportbudget resterend %" }
     },
     "binary_sensor": {
       "anomaly": {
@@ -215,6 +234,9 @@
       },
       "voltage_warning": {
         "name": "Spanning-waarschuwing"
+      },
+      "budget_exhausted": {
+        "name": "Exportbudget op"
       }
     }
   },

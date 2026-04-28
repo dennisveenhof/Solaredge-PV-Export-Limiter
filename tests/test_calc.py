@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 import pytest
 
 from custom_components.solaredge_pv_export_limiter.calc import (
+    budget_remaining_pct,
     clamp_pct,
+    compute_budget_status,
     compute_curtailment,
     compute_load,
     compute_target_pct,
     compute_target_w,
     detect_inverter_nominal,
     effective_setpoint_w,
+    integrate_kwh,
+    period_key,
     should_write,
 )
 
@@ -211,3 +217,88 @@ class TestEffectiveSetpointW:
             )
             is None
         )
+
+
+class TestIntegrateKwh:
+    def test_one_kw_one_hour_is_one_kwh(self):
+        assert integrate_kwh(power_w=1000.0, elapsed_s=3600.0) == 1.0
+
+    def test_zero_power(self):
+        assert integrate_kwh(power_w=0.0, elapsed_s=60.0) == 0.0
+
+    def test_negative_power_clamped(self):
+        assert integrate_kwh(power_w=-500.0, elapsed_s=60.0) == 0.0
+
+    def test_negative_elapsed_clamped(self):
+        assert integrate_kwh(power_w=500.0, elapsed_s=-1.0) == 0.0
+
+    def test_small_increment(self):
+        # 2000 W over 10 s = 5.555... Wh = 0.005555 kWh
+        result = integrate_kwh(power_w=2000.0, elapsed_s=10.0)
+        assert abs(result - 2000 * 10 / 3_600_000) < 1e-9
+
+
+class TestPeriodKey:
+    def test_day_key(self):
+        assert period_key(datetime(2026, 4, 28, 14, 30), "day") == "2026-04-28"
+
+    def test_month_key(self):
+        assert period_key(datetime(2026, 4, 28, 14, 30), "month") == "2026-04"
+
+    def test_year_key(self):
+        assert period_key(datetime(2026, 4, 28, 14, 30), "year") == "2026"
+
+    def test_unknown_period_falls_back_to_day(self):
+        assert period_key(datetime(2026, 4, 28), "weekly") == "2026-04-28"
+
+    def test_day_boundary_change(self):
+        a = period_key(datetime(2026, 4, 28, 23, 59), "day")
+        b = period_key(datetime(2026, 4, 29, 0, 0), "day")
+        assert a != b
+
+
+class TestComputeBudgetStatus:
+    def test_within_budget(self):
+        used, remaining, exhausted = compute_budget_status(5.0, 10.0)
+        assert used == 5.0
+        assert remaining == 5.0
+        assert exhausted is False
+
+    def test_exactly_at_budget_is_exhausted(self):
+        _used, remaining, exhausted = compute_budget_status(10.0, 10.0)
+        assert remaining == 0.0
+        assert exhausted is True
+
+    def test_over_budget(self):
+        used, remaining, exhausted = compute_budget_status(12.0, 10.0)
+        assert used == 12.0
+        assert remaining == 0.0
+        assert exhausted is True
+
+    def test_negative_used_clamped(self):
+        used, remaining, exhausted = compute_budget_status(-1.0, 10.0)
+        assert used == 0.0
+        assert remaining == 10.0
+        assert exhausted is False
+
+    def test_zero_budget_never_exhausted(self):
+        # A 0 kWh budget = "no budget set" — not the exhausted state.
+        _used, _remaining, exhausted = compute_budget_status(5.0, 0.0)
+        assert exhausted is False
+
+
+class TestBudgetRemainingPct:
+    def test_full(self):
+        assert budget_remaining_pct(used_kwh=0.0, budget_kwh=10.0) == 100.0
+
+    def test_half(self):
+        assert budget_remaining_pct(used_kwh=5.0, budget_kwh=10.0) == 50.0
+
+    def test_empty(self):
+        assert budget_remaining_pct(used_kwh=10.0, budget_kwh=10.0) == 0.0
+
+    def test_over_clamped(self):
+        assert budget_remaining_pct(used_kwh=12.0, budget_kwh=10.0) == 0.0
+
+    def test_zero_budget_returns_zero(self):
+        assert budget_remaining_pct(used_kwh=0.0, budget_kwh=0.0) == 0.0

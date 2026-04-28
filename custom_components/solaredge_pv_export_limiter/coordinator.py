@@ -18,21 +18,31 @@ from homeassistant.core import (
     callback,
 )
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .calc import (
+    budget_remaining_pct,
     clamp_pct,
+    compute_budget_status,
     compute_curtailment,
     compute_load,
     compute_target_pct,
     compute_target_w,
     effective_setpoint_w,
+    integrate_kwh,
+    period_key,
     should_write,
 )
 from .const import (
     ANOMALY_DURATION_S,
     ANOMALY_EXPORT_THRESHOLD_W,
     ANOMALY_PV_MIN_W,
+    CONF_BUDGET_ENABLED,
+    CONF_BUDGET_KWH,
+    CONF_BUDGET_NOTIFY_PCT,
+    CONF_BUDGET_PERIOD,
     CONF_ENABLED_AT_START,
     CONF_GRID_EXPORT,
     CONF_GRID_IMPORT,
@@ -56,6 +66,10 @@ from .const import (
     CONF_VOLTAGE_PROTECTION_ENABLED,
     CONF_VOLTAGE_RECOVERY_V,
     CONF_VOLTAGE_WARNING_V,
+    DEFAULT_BUDGET_ENABLED,
+    DEFAULT_BUDGET_KWH,
+    DEFAULT_BUDGET_NOTIFY_PCT,
+    DEFAULT_BUDGET_PERIOD,
     DEFAULT_HYSTERESIS_PCT,
     DEFAULT_INVERTER_NOMINAL_W,
     DEFAULT_SETPOINT_MANUAL_W,
@@ -81,6 +95,7 @@ from .helpers import SmoothingBuffer, TimedFlag, safe_float, to_watts
 _LOGGER = logging.getLogger(__name__)
 
 PRICE_NEGATIVE_DEBOUNCE_S = 60
+BUDGET_STORE_VERSION = 1
 
 
 @dataclass
@@ -104,6 +119,12 @@ class PVLimiterState:
     voltage_warning: bool
     last_write_pct: float | None
     last_write_at: float | None
+    budget_enabled: bool
+    budget_kwh: float
+    budget_used_kwh: float
+    budget_remaining_kwh: float
+    budget_remaining_pct: float
+    budget_exhausted: bool
 
 
 class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
@@ -111,7 +132,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
 
     config_entry: ConfigEntry
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:  # noqa: PLR0915
         merged: dict[str, Any] = {**entry.data, **entry.options}
         update_s = int(merged.get(CONF_UPDATE_INTERVAL_S, DEFAULT_UPDATE_INTERVAL_S))
 
@@ -166,6 +187,20 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         self._tariff_enabled = bool(merged.get(CONF_TARIFF_ENABLED, False))
         self._tariff_negative_threshold = float(merged.get(CONF_TARIFF_NEGATIVE_THRESHOLD, 0.0))
         self._tariff_high_threshold = float(merged.get(CONF_TARIFF_HIGH_THRESHOLD, 0.30))
+
+        # Export budget
+        self._budget_enabled = bool(merged.get(CONF_BUDGET_ENABLED, DEFAULT_BUDGET_ENABLED))
+        self._budget_kwh = float(merged.get(CONF_BUDGET_KWH, DEFAULT_BUDGET_KWH))
+        self._budget_period = str(merged.get(CONF_BUDGET_PERIOD, DEFAULT_BUDGET_PERIOD))
+        self._budget_notify_pct = int(merged.get(CONF_BUDGET_NOTIFY_PCT, DEFAULT_BUDGET_NOTIFY_PCT))
+        self._budget_used_kwh = 0.0
+        self._budget_period_key: str | None = None
+        self._budget_notified = False
+        self._budget_last_tick_monotonic: float | None = None
+        self._budget_store: Store = Store(
+            hass, BUDGET_STORE_VERSION, f"{DOMAIN}.{entry.entry_id}.budget"
+        )
+        self._budget_loaded = False
 
         # Mutable runtime state
         self._mode: str = merged.get(CONF_INITIAL_MODE, Mode.NORMAL)
@@ -331,6 +366,10 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         imp_smooth = self._smoothing.push("imp", imp_raw or 0)
         exp_smooth = self._smoothing.push("exp", exp_raw or 0)
 
+        # Budget tracking runs in every mode (even Off / Disabled): the kWh
+        # counter must reflect actual grid export regardless of regulation.
+        await self._update_budget(exp_smooth, now)
+
         # Tariff-driven mode override
         if self._tariff_enabled and tariff_price is not None:
             await self._maybe_switch_mode_for_tariff(tariff_price, now)
@@ -395,6 +434,11 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
             status = Status.NO_PV
         else:
             status = Status.OK
+
+        # Strict enforcement (option 1B): forces 0% when budget is depleted.
+        if self._budget_enabled and self._is_budget_exhausted():
+            target_pct = 0.0
+            status = Status.BUDGET_EXHAUSTED
 
         await self._write_limit(target_pct)
 
@@ -553,6 +597,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         anomaly: bool = False,
         voltage_warning: bool = False,
     ) -> PVLimiterState:
+        used, remaining, exhausted = compute_budget_status(self._budget_used_kwh, self._budget_kwh)
         return PVLimiterState(
             load_w=load_w,
             target_w=target_w,
@@ -571,6 +616,12 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
             voltage_warning=voltage_warning,
             last_write_pct=self._last_write_pct,
             last_write_at=self._last_write_at,
+            budget_enabled=self._budget_enabled,
+            budget_kwh=self._budget_kwh,
+            budget_used_kwh=used,
+            budget_remaining_kwh=remaining,
+            budget_remaining_pct=budget_remaining_pct(used, self._budget_kwh),
+            budget_exhausted=exhausted,
         )
 
     def _initial_state(self) -> PVLimiterState:
@@ -592,4 +643,91 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
             voltage_warning=False,
             last_write_pct=None,
             last_write_at=None,
+            budget_enabled=self._budget_enabled,
+            budget_kwh=self._budget_kwh,
+            budget_used_kwh=0.0,
+            budget_remaining_kwh=self._budget_kwh,
+            budget_remaining_pct=100.0 if self._budget_kwh > 0 else 0.0,
+            budget_exhausted=False,
         )
+
+    # ─── Export budget ─────────────────────────────────────────────────
+
+    async def _load_budget(self) -> None:
+        """Restore persisted budget counter on first tick after restart."""
+        if self._budget_loaded:
+            return
+        try:
+            stored = await self._budget_store.async_load()
+        except Exception as err:  # pragma: no cover - defensive
+            _LOGGER.warning("Could not load budget store: %s", err)
+            stored = None
+        if isinstance(stored, dict):
+            self._budget_used_kwh = float(stored.get("used_kwh", 0.0))
+            self._budget_period_key = stored.get("period_key")
+            self._budget_notified = bool(stored.get("notified", False))
+        self._budget_loaded = True
+
+    async def _save_budget(self) -> None:
+        await self._budget_store.async_save(
+            {
+                "used_kwh": self._budget_used_kwh,
+                "period_key": self._budget_period_key,
+                "notified": self._budget_notified,
+            }
+        )
+
+    async def _update_budget(self, export_w: float, now_monotonic: float) -> None:
+        """Integrate exported energy into the budget counter and handle resets."""
+        await self._load_budget()
+
+        # Period boundary check (always — even if disabled, so re-enabling is clean).
+        current_key = period_key(dt_util.now(), self._budget_period)
+        if self._budget_period_key != current_key:
+            self._budget_period_key = current_key
+            self._budget_used_kwh = 0.0
+            self._budget_notified = False
+            self._budget_last_tick_monotonic = now_monotonic
+            await self._save_budget()
+            return
+
+        if not self._budget_enabled:
+            self._budget_last_tick_monotonic = now_monotonic
+            return
+
+        # Integrate: power times elapsed seconds.
+        if self._budget_last_tick_monotonic is not None:
+            elapsed = now_monotonic - self._budget_last_tick_monotonic
+            self._budget_used_kwh += integrate_kwh(export_w, elapsed)
+        self._budget_last_tick_monotonic = now_monotonic
+
+        # Notify at threshold (once per period).
+        if (
+            self._budget_notify_pct > 0
+            and not self._budget_notified
+            and self._budget_kwh > 0
+            and self._budget_used_kwh >= self._budget_kwh * (self._budget_notify_pct / 100.0)
+        ):
+            self._budget_notified = True
+            if self._notify_target:
+                self.hass.async_create_task(
+                    self.hass.services.async_call(
+                        "notify",
+                        self._notify_target,
+                        {
+                            "title": "Solaredge PV Export Limiter — budget",
+                            "message": (
+                                f"Export budget: {self._budget_used_kwh:.1f} of "
+                                f"{self._budget_kwh:.1f} kWh used "
+                                f"({self._budget_notify_pct}%) for this "
+                                f"{self._budget_period}."
+                            ),
+                        },
+                        blocking=False,
+                    )
+                )
+
+        await self._save_budget()
+
+    def _is_budget_exhausted(self) -> bool:
+        return self._budget_kwh > 0 and self._budget_used_kwh >= self._budget_kwh

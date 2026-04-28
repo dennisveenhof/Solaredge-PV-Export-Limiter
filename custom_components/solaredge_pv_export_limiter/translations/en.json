@@ -121,16 +121,24 @@
           "voltage_warning_v": "Voltage warning threshold (V)",
           "tariff_enabled": "Tariff awareness enabled",
           "tariff_negative_threshold": "Negative price threshold (€/kWh)",
-          "tariff_high_threshold": "High price threshold (€/kWh)"
+          "tariff_high_threshold": "High price threshold (€/kWh)",
+          "budget_enabled": "Export budget enabled",
+          "budget_kwh": "Export budget (kWh)",
+          "budget_period": "Budget period",
+          "budget_notify_pct": "Notify at % used (0 = off)"
         },
         "data_description": {
-          "setpoint_normal_w": "Maximum grid export in Normal mode. 50 W = small buffer to avoid importing. 0 W = aim for net-zero. 200 W = allow generous export.",
-          "setpoint_vacation_w": "Used in Vacation mode. Typically 0 W so no surplus is exported while away.",
+          "setpoint_normal_w": "Maximum grid export in Default mode. 50 W = small buffer to avoid importing. 0 W = aim for net-zero. 200 W = allow generous export.",
+          "setpoint_vacation_w": "Used in Zero-export mode. Typically 0 W so no surplus is exported while away.",
           "setpoint_negative_price_w": "Used when electricity price drops below the negative threshold. Typically 0 W to avoid paying to export.",
-          "setpoint_wide_w": "Used in Wide mode. Higher value (e.g. 200 W) when some export is acceptable.",
+          "setpoint_wide_w": "Used in Permissive mode. Higher value (e.g. 200 W) when some export is acceptable.",
           "hysteresis_pct": "Minimum change (%) before a new limit is written to the inverter. Prevents excessive Modbus writes. Default 1.5% works well.",
           "update_interval_s": "How often the control loop runs. 10 s recommended. Do not go below 5 s.",
-          "smoothing_window_s": "Rolling average window for P1 sensor noise rejection. 8 s works well for most P1 meters."
+          "smoothing_window_s": "Rolling average window for P1 sensor noise rejection. 8 s works well for most P1 meters.",
+          "budget_enabled": "Cap how much energy may be exported per period. When the cap is reached, the limiter forces 0 W export until the next period starts.",
+          "budget_kwh": "Total exportable kWh allowed within the chosen period.",
+          "budget_period": "When the counter resets: every day at 00:00, every month on the 1st, or every year on January 1st.",
+          "budget_notify_pct": "Send a notification once this percentage of the budget is used. Set to 0 to disable warnings."
         }
       }
     }
@@ -138,12 +146,19 @@
   "selector": {
     "mode": {
       "options": {
-        "normal": "Normal",
-        "vacation": "Vacation",
-        "negative_price": "Negative price",
-        "wide": "Wide",
+        "normal": "Default",
+        "vacation": "Zero export",
+        "negative_price": "Negative tariff",
+        "wide": "Permissive",
         "manual": "Manual",
-        "off": "Off"
+        "off": "Disabled"
+      }
+    },
+    "budget_period": {
+      "options": {
+        "day": "Daily",
+        "month": "Monthly",
+        "year": "Yearly"
       }
     }
   },
@@ -157,12 +172,12 @@
       "mode": {
         "name": "Operating mode",
         "state": {
-          "normal": "Normal",
-          "vacation": "Vacation",
-          "negative_price": "Negative price",
-          "wide": "Wide",
+          "normal": "Default",
+          "vacation": "Zero export",
+          "negative_price": "Negative tariff",
+          "wide": "Permissive",
           "manual": "Manual",
-          "off": "Off"
+          "off": "Disabled"
         }
       }
     },
@@ -205,9 +220,13 @@
           "sensor_loss": "Sensor unavailable",
           "voltage_high": "Voltage protection active",
           "write_error": "Write error",
-          "starting": "Starting"
+          "starting": "Starting",
+          "budget_exhausted": "Export budget exhausted"
         }
-      }
+      },
+      "budget_used_kwh": { "name": "Export budget used" },
+      "budget_remaining_kwh": { "name": "Export budget remaining" },
+      "budget_remaining_pct": { "name": "Export budget remaining %" }
     },
     "binary_sensor": {
       "anomaly": {
@@ -215,6 +234,9 @@
       },
       "voltage_warning": {
         "name": "Voltage warning"
+      },
+      "budget_exhausted": {
+        "name": "Export budget exhausted"
       }
     }
   },

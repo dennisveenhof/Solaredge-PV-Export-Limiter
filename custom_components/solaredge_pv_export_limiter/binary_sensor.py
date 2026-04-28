@@ -39,6 +39,13 @@ BINARY_SENSORS: tuple[PVLimiterBinaryDescription, ...] = (
         icon="mdi:flash-alert",
         is_on_fn=lambda s: bool(s.voltage_warning),
     ),
+    PVLimiterBinaryDescription(
+        key="budget_exhausted",
+        translation_key="budget_exhausted",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        icon="mdi:battery-off-outline",
+        is_on_fn=lambda s: bool(s.budget_exhausted),
+    ),
 )
 
 

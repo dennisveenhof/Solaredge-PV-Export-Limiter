@@ -27,6 +27,11 @@ from homeassistant.helpers.selector import (
 from .calc import detect_inverter_nominal
 from .const import (
     ALL_MODES,
+    BUDGET_PERIODS,
+    CONF_BUDGET_ENABLED,
+    CONF_BUDGET_KWH,
+    CONF_BUDGET_NOTIFY_PCT,
+    CONF_BUDGET_PERIOD,
     CONF_ENABLED_AT_START,
     CONF_GRID_EXPORT,
     CONF_GRID_IMPORT,
@@ -50,6 +55,10 @@ from .const import (
     CONF_VOLTAGE_PROTECTION_ENABLED,
     CONF_VOLTAGE_RECOVERY_V,
     CONF_VOLTAGE_WARNING_V,
+    DEFAULT_BUDGET_ENABLED,
+    DEFAULT_BUDGET_KWH,
+    DEFAULT_BUDGET_NOTIFY_PCT,
+    DEFAULT_BUDGET_PERIOD,
     DEFAULT_HYSTERESIS_PCT,
     DEFAULT_INVERTER_NOMINAL_W,
     DEFAULT_NAME,
@@ -434,6 +443,28 @@ class PVExportLimiterOptionsFlow(OptionsFlow):
                         CONF_TARIFF_HIGH_THRESHOLD, DEFAULT_TARIFF_HIGH_THRESHOLD_EUR
                     ),
                 ): _number_selector(0.0, 2.0, 0.01, "EUR"),
+                vol.Required(
+                    CONF_BUDGET_ENABLED,
+                    default=merged.get(CONF_BUDGET_ENABLED, DEFAULT_BUDGET_ENABLED),
+                ): bool,
+                vol.Required(
+                    CONF_BUDGET_KWH,
+                    default=merged.get(CONF_BUDGET_KWH, DEFAULT_BUDGET_KWH),
+                ): _number_selector(0.1, 10000.0, 0.1, "kWh"),
+                vol.Required(
+                    CONF_BUDGET_PERIOD,
+                    default=merged.get(CONF_BUDGET_PERIOD, DEFAULT_BUDGET_PERIOD),
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(BUDGET_PERIODS),
+                        translation_key="budget_period",
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Required(
+                    CONF_BUDGET_NOTIFY_PCT,
+                    default=merged.get(CONF_BUDGET_NOTIFY_PCT, DEFAULT_BUDGET_NOTIFY_PCT),
+                ): _number_selector(0, 100, 5, "%"),
             }
         )
         return self.async_show_form(step_id="settings", data_schema=schema)
