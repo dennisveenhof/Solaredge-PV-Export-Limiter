@@ -423,7 +423,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
                 current_pct=current_pct,
                 target_pct=100.0,
                 target_w=self._nominal_w,
-                load_w=compute_load(pv_smooth, imp_smooth, exp_smooth),
+                load_w=self._sanitized_load(pv_smooth, imp_smooth, exp_smooth),
             )
 
         # Vacation auto-disable — flip to normal if someone's clearly home.
@@ -433,22 +433,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         voltage_warning = self._evaluate_voltage_warning(voltage_raw, now)
 
         # Compute load + target.
-        load_w = compute_load(pv_smooth, imp_smooth, exp_smooth)
-
-        # Guard: deeply negative load means the PV sensor is underreporting while
-        # the inverter is still producing (e.g. Modbus hiccup returning 0 W).
-        # Fall back to import as a conservative load estimate so we still limit.
-        if load_w < -100:
-            _LOGGER.warning(
-                "Computed load %.0f W is negative (PV=%.0f W, import=%.0f W, "
-                "export=%.0f W) — PV sensor may be underreporting; using grid "
-                "import as load estimate to prevent runaway export",
-                load_w,
-                pv_smooth,
-                imp_smooth,
-                exp_smooth,
-            )
-            load_w = imp_smooth
+        load_w = self._sanitized_load(pv_smooth, imp_smooth, exp_smooth)
 
         setpoint = effective_setpoint_w(
             mode=self._mode,
@@ -565,6 +550,29 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         if not active:
             self._notified_anomaly = False
         return active
+
+    def _sanitized_load(self, pv_w: float, import_w: float, export_w: float) -> float:
+        """Compute load and fall back to import when PV sensor underreports.
+
+        load = pv + import - export. If the PV sensor briefly reads stale (Modbus
+        hiccup returning 0 W) while the inverter actually produces, computed load
+        goes deeply negative and the regular control formula breaks. Use import
+        as a conservative load estimate in that case so anything reading load_w
+        — control loop and displayed sensor alike — sees a sane value.
+        """
+        load_w = compute_load(pv_w, import_w, export_w)
+        if load_w < -100:
+            _LOGGER.warning(
+                "Computed load %.0f W is negative (PV=%.0f W, import=%.0f W, "
+                "export=%.0f W) — PV sensor may be underreporting; falling "
+                "back to grid import as load estimate",
+                load_w,
+                pv_w,
+                import_w,
+                export_w,
+            )
+            return import_w
+        return load_w
 
     def _evaluate_vacation_auto_disable(self, import_w: float, now: float) -> None:
         """Flip vacation → normal if grid import indicates someone is home."""
