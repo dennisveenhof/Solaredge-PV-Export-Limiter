@@ -468,8 +468,10 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
 
         await self._write_limit(target_pct)
 
-        # Anomaly detection (only meaningful when limiter is enabled)
-        anomaly = self._evaluate_anomaly(export_w=exp_smooth, pv_w=pv_smooth, now=now)
+        # Anomaly detection (only meaningful when limiter is actively curbing)
+        anomaly = self._evaluate_anomaly(
+            export_w=exp_smooth, pv_w=pv_smooth, target_pct=target_pct, now=now
+        )
 
         return self._snapshot(
             status=status,
@@ -504,9 +506,16 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         unit = state.attributes.get("unit_of_measurement")
         return to_watts(value, unit)
 
-    def _evaluate_anomaly(self, *, export_w: float, pv_w: float, now: float) -> bool:
+    def _evaluate_anomaly(
+        self, *, export_w: float, pv_w: float, target_pct: float, now: float
+    ) -> bool:
+        # Skip when we're intentionally allowing full export (mode=off, BUDGET_FREE,
+        # or any setpoint that resolves to ~100%). High export is expected, not a fault.
         condition = (
-            export_w > ANOMALY_EXPORT_THRESHOLD_W and pv_w > ANOMALY_PV_MIN_W and self._enabled
+            export_w > ANOMALY_EXPORT_THRESHOLD_W
+            and pv_w > ANOMALY_PV_MIN_W
+            and self._enabled
+            and target_pct < 99.0
         )
         active = self._anomaly_flag.update(condition, now)
         if active and not self._notified_anomaly and self._notify_target:
