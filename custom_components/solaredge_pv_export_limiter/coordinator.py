@@ -449,15 +449,23 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         # Voltage protection — pre-empt control if mains is too high.
         voltage_warning = self._evaluate_voltage_warning(voltage_raw, now)
 
-        # Compute load with asymmetric smoothing: take whichever of the raw or
-        # smoothed estimate is HIGHER. Smoothing rejects sensor noise on the way
-        # down (cap-tightening, where we must be conservative), but raw values
-        # let the cap open immediately when load actually spikes (no need to be
-        # noise-averse — opening only releases more PV, never causes export).
-        load_raw = compute_load(pv_raw or 0, imp_raw or 0, exp_raw or 0)
-        load_smooth = compute_load(pv_smooth, imp_smooth, exp_smooth)
-        load_w = self._sanitized_load(
-            load_candidate=max(load_raw, load_smooth),
+        # Asymmetric smoothing — directional, not max():
+        # • RAISING the cap: use raw load. Cap opens immediately on a real load
+        #   spike so we stop importing while PV is available.
+        # • LOWERING the cap: use smoothed load. Avoids closing the cap on a
+        #   brief load dip and creating an export overshoot the next tick.
+        # The naive max(raw, smooth) approach picks the high value in BOTH
+        # directions, which keeps the cap open after a load drop until smoothing
+        # catches up — that produced the observed +200 W / -20 W oscillation.
+        load_raw = self._sanitized_load(
+            load_candidate=compute_load(pv_raw or 0, imp_raw or 0, exp_raw or 0),
+            pv_w=pv_raw or 0,
+            import_raw=imp_raw or 0,
+            import_smooth=imp_smooth,
+            export_w=exp_raw or 0,
+        )
+        load_smooth = self._sanitized_load(
+            load_candidate=compute_load(pv_smooth, imp_smooth, exp_smooth),
             pv_w=pv_smooth,
             import_raw=imp_raw or 0,
             import_smooth=imp_smooth,
@@ -474,8 +482,24 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         )
         if setpoint is None:
             setpoint = self._setpoint_normal
+
+        target_pct_raw = compute_target_pct(
+            compute_target_w(load_raw, setpoint), self._nominal_w
+        )
+        target_pct_smooth = compute_target_pct(
+            compute_target_w(load_smooth, setpoint), self._nominal_w
+        )
+
+        # Pick the smoothed value normally; only step up to the raw value when
+        # raw says the cap must rise above where it currently is. That gives
+        # fast load-spike response without lingering open after the spike ends.
+        if target_pct_raw > current_pct and target_pct_raw > target_pct_smooth:
+            target_pct = target_pct_raw
+            load_w = load_raw
+        else:
+            target_pct = target_pct_smooth
+            load_w = load_smooth
         target_w = compute_target_w(load_w, setpoint)
-        target_pct = compute_target_pct(target_w, self._nominal_w)
 
         if voltage_warning:
             target_pct = 0.0
