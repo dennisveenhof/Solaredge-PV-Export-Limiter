@@ -13,11 +13,21 @@ DEFAULT_UPDATE_INTERVAL_S: Final = 10
 MIN_UPDATE_INTERVAL_S: Final = 5
 MAX_UPDATE_INTERVAL_S: Final = 60
 
-DEFAULT_SMOOTHING_WINDOW_S: Final = 8
+DEFAULT_SMOOTHING_WINDOW_S: Final = 4  # short — reactive controller runs on P1 events
 DEFAULT_HYSTERESIS_PCT: Final = 1.5
 DEFAULT_HYSTERESIS_RAISE_PCT: Final = 0.5  # asymmetric: faster cap-opening
 MIN_HYSTERESIS_PCT: Final = 0.1
 MAX_HYSTERESIS_PCT: Final = 5.0
+
+# ─── Reactive controller ──────────────────────────────────────────────────
+# P-controller on net export error — only depends on P1 (fast) sensors.
+# error_w     = setpoint - (export - import)     (positive = need more PV)
+# delta_pct   = (error_w / nominal_w) * 100 * GAIN
+# new_target  = clamp(current_cap_pct + delta_pct)
+# clamped per tick to MAX_STEP_PCT to avoid overshoot.
+REACTIVE_GAIN: Final = 0.6              # how aggressively each tick corrects
+REACTIVE_MAX_STEP_PCT: Final = 8.0      # max single-tick cap change in %
+REACTIVE_DEADBAND_W: Final = 30          # ignore errors smaller than this
 
 # ─── Inverter ─────────────────────────────────────────────────────────────
 DEFAULT_INVERTER_NOMINAL_W: Final = 4000
