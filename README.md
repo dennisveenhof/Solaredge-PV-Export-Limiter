@@ -67,6 +67,49 @@ Before installing, you need:
 3. Settings → Devices & Services → Add Integration → "Solaredge PV Export Limiter"
 4. Follow the wizard
 
+## Modes & Status reference
+
+There are two related concepts:
+
+- **Mode** — the strategy *you* select (how the limiter should behave).
+- **Status** — what the integration *automatically reports* about its current state.
+
+### Modes (you choose)
+
+| Mode key | Label | Setpoint | What it does | When to use |
+|---|---|---|---|---|
+| `normal` | **Default / Standaard** | 50 W | Keeps grid export around 50 W. Small buffer prevents brief grid imports during sudden loads. | Daily use — this is your default |
+| `vacation` | **Vacation / Vakantie** | 0 W | Aims for zero export. **Auto-falls back to Default** if grid import stays > 600 W for 60 s (configurable). | Actually away / no one home |
+| `negative_price` | **Negative tariff** | 0 W | No export during negative EPEX hours. Switches automatically when a tariff sensor is configured. | Dynamic tariff contract |
+| `wide` | **Permissive / Soepel** | 200 W | Allows up to 200 W export. | When you want to export but capped |
+| `manual` | **Manual** | user-defined | You set the setpoint via a number entity. | Tuning / experimenting |
+| `off` | **Disabled** | n/a | Limiter is off, inverter runs at 100%. | Temporarily disable without removing the integration |
+
+### Status (the integration reports)
+
+| Status | Meaning | What the limiter does |
+|---|---|---|
+| `ok` | Everything operating normally | Regular control loop active |
+| `starting` | Just started, no data yet | Waits for sensor input |
+| `disabled` | Limiter off (mode=off or switch off) | Writes 100% to inverter |
+| `no_pv` | No PV production (night / overcast) | Writes 100% — nothing to curb |
+| `voltage_high` | Grid voltage > threshold (default 250 V) | Forces 0% — protects against inverter trip |
+| `sensor_loss` | A sensor became unavailable | Writes 100%, fires alert |
+| `write_error` | Modbus write to inverter failed | Retries, alerts |
+| `budget_free` | Budget mode on, budget remaining | Writes 100% — export freely |
+| `budget_exhausted` | Budget mode on, budget used up | Forces 0% until next period |
+
+### Special features (independent of mode)
+
+| Feature | What | Override priority |
+|---|---|---|
+| **Voltage protection** | > threshold → 0% export for 30 s | **Wins over everything** (safety) |
+| **Export budget** | Max X kWh per day/month/year | Wins over mode setpoint |
+| **Vacation auto-disable** | Switches mode when import > threshold | Switches mode only, no override |
+| **Negative-price tracking** | Switches mode based on tariff | Switches mode only |
+
+For detailed mode behavior see [docs/modes.md](docs/modes.md).
+
 ## Documentation
 
 - [Installation](docs/installation.md)
