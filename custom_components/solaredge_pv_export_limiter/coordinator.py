@@ -76,6 +76,7 @@ from .const import (
     DEFAULT_BUDGET_NOTIFY_PCT,
     DEFAULT_BUDGET_PERIOD,
     DEFAULT_HYSTERESIS_PCT,
+    DEFAULT_HYSTERESIS_RAISE_PCT,
     DEFAULT_INVERTER_NOMINAL_W,
     DEFAULT_SETPOINT_MANUAL_W,
     DEFAULT_SETPOINT_NEGATIVE_PRICE_W,
@@ -172,6 +173,12 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         smoothing_s = float(merged.get(CONF_SMOOTHING_WINDOW_S, DEFAULT_SMOOTHING_WINDOW_S))
         self._smoothing = SmoothingBuffer(window_s=smoothing_s)
         self._hysteresis_pct = float(merged.get(CONF_HYSTERESIS_PCT, DEFAULT_HYSTERESIS_PCT))
+        # Asymmetric hysteresis: open the cap faster than we close it. Tightening
+        # the cap risks export so we keep the conservative threshold; opening it
+        # only releases more PV, so a smaller delta is safe and reduces import lag.
+        self._hysteresis_raise_pct = min(
+            DEFAULT_HYSTERESIS_RAISE_PCT, self._hysteresis_pct
+        )
 
         # Setpoints
         self._setpoint_normal = int(merged.get(CONF_SETPOINT_NORMAL, DEFAULT_SETPOINT_NORMAL_W))
@@ -245,6 +252,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         self._unsub_listeners: list[CALLBACK_TYPE] = []
         self._last_event_trigger_at = 0.0
         self._notified_anomaly = False
+        self._last_status: str | None = None  # detect status transitions for forced writes
 
         self.data = self._initial_state()
 
@@ -276,6 +284,9 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
             return
         self._mode = mode
         self._user_mode_override = mode != Mode.NORMAL  # remember user choice
+        # Drop stale samples so the new mode's setpoint takes effect immediately
+        # instead of being averaged against the previous mode's regime.
+        self._smoothing.reset()
         await self.async_request_refresh()
 
     async def async_set_enabled(self, enabled: bool) -> None:
@@ -317,7 +328,7 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         @callback
         def _changed(event: Event[EventStateChangedData]) -> None:
             now = time.monotonic()
-            if now - self._last_event_trigger_at < EVENT_DEBOUNCE_S:
+            if now - self._last_event_trigger_at <= EVENT_DEBOUNCE_S:
                 return
             new_state = event.data.get("new_state")
             if not new_state or new_state.state in ("unknown", "unavailable"):
@@ -423,7 +434,13 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
                 current_pct=current_pct,
                 target_pct=100.0,
                 target_w=self._nominal_w,
-                load_w=self._sanitized_load(pv_smooth, imp_smooth, exp_smooth),
+                load_w=self._sanitized_load(
+                    load_candidate=compute_load(pv_smooth, imp_smooth, exp_smooth),
+                    pv_w=pv_smooth,
+                    import_raw=imp_raw or 0,
+                    import_smooth=imp_smooth,
+                    export_w=exp_smooth,
+                ),
             )
 
         # Vacation auto-disable — flip to normal if someone's clearly home.
@@ -432,8 +449,20 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         # Voltage protection — pre-empt control if mains is too high.
         voltage_warning = self._evaluate_voltage_warning(voltage_raw, now)
 
-        # Compute load + target.
-        load_w = self._sanitized_load(pv_smooth, imp_smooth, exp_smooth)
+        # Compute load with asymmetric smoothing: take whichever of the raw or
+        # smoothed estimate is HIGHER. Smoothing rejects sensor noise on the way
+        # down (cap-tightening, where we must be conservative), but raw values
+        # let the cap open immediately when load actually spikes (no need to be
+        # noise-averse — opening only releases more PV, never causes export).
+        load_raw = compute_load(pv_raw or 0, imp_raw or 0, exp_raw or 0)
+        load_smooth = compute_load(pv_smooth, imp_smooth, exp_smooth)
+        load_w = self._sanitized_load(
+            load_candidate=max(load_raw, load_smooth),
+            pv_w=pv_smooth,
+            import_raw=imp_raw or 0,
+            import_smooth=imp_smooth,
+            export_w=exp_smooth,
+        )
 
         setpoint = effective_setpoint_w(
             mode=self._mode,
@@ -451,9 +480,16 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         if voltage_warning:
             target_pct = 0.0
             status = Status.VOLTAGE_HIGH
-        elif pv_smooth < 50 and current_pct >= 99.0 and exp_smooth < 100:
-            # Genuine no-production: PV sensor low AND no significant export.
-            # If export is high the sensor is likely glitching — fall through to OK.
+        elif (
+            pv_smooth < 50
+            and (pv_raw or 0) < 50
+            and current_pct >= 99.0
+            and exp_smooth < 100
+        ):
+            # Genuine no-production: BOTH raw and smoothed PV are low, AND no
+            # significant export. Without the raw check, sunrise-type scenarios
+            # where pv_raw has just risen but smoothing hasn't caught up would
+            # incorrectly latch the cap at 100% across a load spike.
             target_pct = 100.0
             status = Status.NO_PV
         else:
@@ -479,7 +515,14 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         # inverter to deliver, not the would-be mode setpoint.
         target_w = (target_pct / 100.0) * self._nominal_w
 
-        await self._write_limit(target_pct)
+        # Force the write whenever status transitions, otherwise the existing
+        # hysteresis can leave the inverter at e.g. 99 % when entering BUDGET_FREE
+        # (target 100 %, delta 1 % < hysteresis) — a bug since the override
+        # explicitly demands the new value.
+        force_write = status != self._last_status
+        self._last_status = status
+
+        await self._write_limit(target_pct, force=force_write)
 
         # Anomaly detection (only meaningful when limiter is actively curbing)
         anomaly = self._evaluate_anomaly(
@@ -551,28 +594,35 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
             self._notified_anomaly = False
         return active
 
-    def _sanitized_load(self, pv_w: float, import_w: float, export_w: float) -> float:
-        """Compute load and fall back to import when PV sensor underreports.
+    def _sanitized_load(
+        self,
+        *,
+        load_candidate: float,
+        pv_w: float,
+        import_raw: float,
+        import_smooth: float,
+        export_w: float,
+    ) -> float:
+        """Sanity-check a load estimate, falling back to raw import on glitches.
 
-        load = pv + import - export. If the PV sensor briefly reads stale (Modbus
-        hiccup returning 0 W) while the inverter actually produces, computed load
-        goes deeply negative and the regular control formula breaks. Use import
-        as a conservative load estimate in that case so anything reading load_w
-        — control loop and displayed sensor alike — sees a sane value.
+        If the PV sensor briefly reads stale (Modbus hiccup returning 0 W) while
+        the inverter actually produces, the computed load goes deeply negative.
+        Fall back to the raw (un-smoothed) grid import as a conservative load
+        estimate so the cap doesn't shrink against the latest sensor data.
         """
-        load_w = compute_load(pv_w, import_w, export_w)
-        if load_w < -100:
+        if load_candidate < -100:
             _LOGGER.warning(
-                "Computed load %.0f W is negative (PV=%.0f W, import=%.0f W, "
-                "export=%.0f W) — PV sensor may be underreporting; falling "
-                "back to grid import as load estimate",
-                load_w,
+                "Computed load %.0f W is negative (PV=%.0f W, import_raw=%.0f W, "
+                "import_smooth=%.0f W, export=%.0f W) — PV sensor may be "
+                "underreporting; falling back to raw grid import as load",
+                load_candidate,
                 pv_w,
-                import_w,
+                import_raw,
+                import_smooth,
                 export_w,
             )
-            return import_w
-        return load_w
+            return max(import_raw, import_smooth)
+        return load_candidate
 
     def _evaluate_vacation_auto_disable(self, import_w: float, now: float) -> None:
         """Flip vacation → normal if grid import indicates someone is home."""
@@ -663,10 +713,19 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         target_pct = clamp_pct(target_pct)
         current_pct = self._read_float(self._inverter_limit)
 
+        # Asymmetric hysteresis: cap-opening uses a smaller threshold so we
+        # respond quickly to load spikes and stop importing while PV is there.
+        # Cap-tightening keeps the conservative threshold to avoid Modbus chatter
+        # on noise.
+        if current_pct is not None and target_pct > current_pct:
+            effective_hysteresis = self._hysteresis_raise_pct
+        else:
+            effective_hysteresis = self._hysteresis_pct
+
         if (
             not force
             and current_pct is not None
-            and not should_write(target_pct, current_pct, self._hysteresis_pct)
+            and not should_write(target_pct, current_pct, effective_hysteresis)
         ):
             return
 

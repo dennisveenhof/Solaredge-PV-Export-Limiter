@@ -15,7 +15,8 @@ MAX_UPDATE_INTERVAL_S: Final = 60
 
 DEFAULT_SMOOTHING_WINDOW_S: Final = 8
 DEFAULT_HYSTERESIS_PCT: Final = 1.5
-MIN_HYSTERESIS_PCT: Final = 0.5
+DEFAULT_HYSTERESIS_RAISE_PCT: Final = 0.5  # asymmetric: faster cap-opening
+MIN_HYSTERESIS_PCT: Final = 0.1
 MAX_HYSTERESIS_PCT: Final = 5.0
 
 # ─── Inverter ─────────────────────────────────────────────────────────────
@@ -50,7 +51,7 @@ MAX_SETPOINT_W: Final = 1000
 
 # ─── Event triggers ───────────────────────────────────────────────────────
 EVENT_EXPORT_THRESHOLD_W: Final = 200
-EVENT_IMPORT_THRESHOLD_W: Final = 500
+EVENT_IMPORT_THRESHOLD_W: Final = 200  # was 500 — closes responsiveness gap below 500 W
 EVENT_DEBOUNCE_S: Final = 3
 
 # ─── Anomaly detection ────────────────────────────────────────────────────
