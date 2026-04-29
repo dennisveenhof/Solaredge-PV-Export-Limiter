@@ -387,29 +387,14 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
                 current_pct=current_pct,
                 target_pct=100.0,
                 target_w=self._nominal_w,
-                load_w=compute_load(pv_smooth, imp_smooth, exp_smooth),
+                load_w=self._sanitized_load(pv_smooth, imp_smooth, exp_smooth),
             )
 
         # Voltage protection — pre-empt control if mains is too high.
         voltage_warning = self._evaluate_voltage_warning(voltage_raw, now)
 
         # Compute load + target.
-        load_w = compute_load(pv_smooth, imp_smooth, exp_smooth)
-
-        # Guard: deeply negative load means the PV sensor is underreporting while
-        # the inverter is still producing (e.g. Modbus hiccup returning 0 W).
-        # Fall back to import as a conservative load estimate so we still limit.
-        if load_w < -100:
-            _LOGGER.warning(
-                "Computed load %.0f W is negative (PV=%.0f W, import=%.0f W, "
-                "export=%.0f W) — PV sensor may be underreporting; using grid "
-                "import as load estimate to prevent runaway export",
-                load_w,
-                pv_smooth,
-                imp_smooth,
-                exp_smooth,
-            )
-            load_w = imp_smooth
+        load_w = self._sanitized_load(pv_smooth, imp_smooth, exp_smooth)
 
         setpoint = effective_setpoint_w(
             mode=self._mode,
@@ -457,8 +442,10 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
 
         await self._write_limit(target_pct)
 
-        # Anomaly detection (only meaningful when limiter is enabled)
-        anomaly = self._evaluate_anomaly(export_w=exp_smooth, pv_w=pv_smooth, now=now)
+        # Anomaly detection (only meaningful when limiter is actively curbing)
+        anomaly = self._evaluate_anomaly(
+            export_w=exp_smooth, pv_w=pv_smooth, target_pct=target_pct, now=now
+        )
 
         return self._snapshot(
             status=status,
@@ -493,9 +480,41 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         unit = state.attributes.get("unit_of_measurement")
         return to_watts(value, unit)
 
-    def _evaluate_anomaly(self, *, export_w: float, pv_w: float, now: float) -> bool:
+    def _sanitized_load(self, pv_w: float, import_w: float, export_w: float) -> float:
+        """Compute load and fall back to import when PV sensor underreports.
+
+        load = pv + import - export. If the PV sensor briefly reads stale
+        (Modbus hiccup returning 0 W) while the inverter is actually producing,
+        computed load goes deeply negative. Use import as a conservative load
+        estimate so anything reading load_w — control loop and the displayed
+        Household load sensor alike — sees a sane value regardless of mode.
+        """
+        load_w = compute_load(pv_w, import_w, export_w)
+        if load_w < -100:
+            _LOGGER.warning(
+                "Computed load %.0f W is negative (PV=%.0f W, import=%.0f W, "
+                "export=%.0f W) — PV sensor may be underreporting; falling "
+                "back to grid import as load estimate",
+                load_w,
+                pv_w,
+                import_w,
+                export_w,
+            )
+            return import_w
+        return load_w
+
+    def _evaluate_anomaly(
+        self, *, export_w: float, pv_w: float, target_pct: float, now: float
+    ) -> bool:
+        # Skip when target is ~100 % — high export is intentional (mode=off,
+        # BUDGET_FREE, no_pv guard, voltage_high doesn't apply here). The
+        # original guard fired "Problem" during BUDGET_FREE phase even though
+        # nothing was wrong.
         condition = (
-            export_w > ANOMALY_EXPORT_THRESHOLD_W and pv_w > ANOMALY_PV_MIN_W and self._enabled
+            export_w > ANOMALY_EXPORT_THRESHOLD_W
+            and pv_w > ANOMALY_PV_MIN_W
+            and self._enabled
+            and target_pct < 99.0
         )
         active = self._anomaly_flag.update(condition, now)
         if active and not self._notified_anomaly and self._notify_target:
