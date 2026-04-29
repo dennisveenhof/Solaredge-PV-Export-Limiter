@@ -54,6 +54,9 @@ from .const import (
     CONF_TARIFF_NEGATIVE_THRESHOLD,
     CONF_TARIFF_PRICE,
     CONF_UPDATE_INTERVAL_S,
+    CONF_VACATION_AUTO_DISABLE_DURATION_S,
+    CONF_VACATION_AUTO_DISABLE_ENABLED,
+    CONF_VACATION_AUTO_DISABLE_IMPORT_W,
     CONF_VOLTAGE_PROTECTION_ENABLED,
     CONF_VOLTAGE_RECOVERY_V,
     CONF_VOLTAGE_WARNING_V,
@@ -72,6 +75,9 @@ from .const import (
     DEFAULT_TARIFF_HIGH_THRESHOLD_EUR,
     DEFAULT_TARIFF_NEGATIVE_THRESHOLD_EUR,
     DEFAULT_UPDATE_INTERVAL_S,
+    DEFAULT_VACATION_AUTO_DISABLE_DURATION_S,
+    DEFAULT_VACATION_AUTO_DISABLE_ENABLED,
+    DEFAULT_VACATION_AUTO_DISABLE_IMPORT_W,
     DEFAULT_VOLTAGE_RECOVERY_V,
     DEFAULT_VOLTAGE_WARNING_V,
     DOMAIN,
@@ -436,6 +442,27 @@ class PVExportLimiterOptionsFlow(OptionsFlow):
                     CONF_SMOOTHING_WINDOW_S,
                     default=merged.get(CONF_SMOOTHING_WINDOW_S, DEFAULT_SMOOTHING_WINDOW_S),
                 ): _number_selector(2, 30, 1, "s"),
+                vol.Required(
+                    CONF_VACATION_AUTO_DISABLE_ENABLED,
+                    default=merged.get(
+                        CONF_VACATION_AUTO_DISABLE_ENABLED,
+                        DEFAULT_VACATION_AUTO_DISABLE_ENABLED,
+                    ),
+                ): bool,
+                vol.Required(
+                    CONF_VACATION_AUTO_DISABLE_IMPORT_W,
+                    default=merged.get(
+                        CONF_VACATION_AUTO_DISABLE_IMPORT_W,
+                        DEFAULT_VACATION_AUTO_DISABLE_IMPORT_W,
+                    ),
+                ): _number_selector(100, 5000, 50, "W"),
+                vol.Required(
+                    CONF_VACATION_AUTO_DISABLE_DURATION_S,
+                    default=merged.get(
+                        CONF_VACATION_AUTO_DISABLE_DURATION_S,
+                        DEFAULT_VACATION_AUTO_DISABLE_DURATION_S,
+                    ),
+                ): _number_selector(10, 600, 5, "s"),
                 vol.Required(
                     CONF_VOLTAGE_PROTECTION_ENABLED,
                     default=merged.get(CONF_VOLTAGE_PROTECTION_ENABLED, False),

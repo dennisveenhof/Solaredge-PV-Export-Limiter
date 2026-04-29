@@ -65,6 +65,9 @@ from .const import (
     CONF_TARIFF_NEGATIVE_THRESHOLD,
     CONF_TARIFF_PRICE,
     CONF_UPDATE_INTERVAL_S,
+    CONF_VACATION_AUTO_DISABLE_DURATION_S,
+    CONF_VACATION_AUTO_DISABLE_ENABLED,
+    CONF_VACATION_AUTO_DISABLE_IMPORT_W,
     CONF_VOLTAGE_PROTECTION_ENABLED,
     CONF_VOLTAGE_RECOVERY_V,
     CONF_VOLTAGE_WARNING_V,
@@ -81,6 +84,9 @@ from .const import (
     DEFAULT_SETPOINT_WIDE_W,
     DEFAULT_SMOOTHING_WINDOW_S,
     DEFAULT_UPDATE_INTERVAL_S,
+    DEFAULT_VACATION_AUTO_DISABLE_DURATION_S,
+    DEFAULT_VACATION_AUTO_DISABLE_ENABLED,
+    DEFAULT_VACATION_AUTO_DISABLE_IMPORT_W,
     DEFAULT_VOLTAGE_RECOVERY_V,
     DEFAULT_VOLTAGE_WARNING_V,
     DOMAIN,
@@ -177,6 +183,25 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         )
         self._setpoint_wide = int(merged.get(CONF_SETPOINT_WIDE, DEFAULT_SETPOINT_WIDE_W))
         self._setpoint_manual = DEFAULT_SETPOINT_MANUAL_W
+
+        # Vacation auto-disable
+        self._vacation_auto_disable_enabled = bool(
+            merged.get(
+                CONF_VACATION_AUTO_DISABLE_ENABLED, DEFAULT_VACATION_AUTO_DISABLE_ENABLED
+            )
+        )
+        self._vacation_auto_disable_w = float(
+            merged.get(
+                CONF_VACATION_AUTO_DISABLE_IMPORT_W, DEFAULT_VACATION_AUTO_DISABLE_IMPORT_W
+            )
+        )
+        vac_dur_s = int(
+            merged.get(
+                CONF_VACATION_AUTO_DISABLE_DURATION_S,
+                DEFAULT_VACATION_AUTO_DISABLE_DURATION_S,
+            )
+        )
+        self._vacation_auto_disable_flag = TimedFlag(duration_s=vac_dur_s)
 
         # Voltage protection
         self._voltage_protection_enabled = bool(merged.get(CONF_VOLTAGE_PROTECTION_ENABLED, False))
@@ -401,6 +426,9 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
                 load_w=compute_load(pv_smooth, imp_smooth, exp_smooth),
             )
 
+        # Vacation auto-disable — flip to normal if someone's clearly home.
+        self._evaluate_vacation_auto_disable(imp_smooth, now)
+
         # Voltage protection — pre-empt control if mains is too high.
         voltage_warning = self._evaluate_voltage_warning(voltage_raw, now)
 
@@ -537,6 +565,40 @@ class PVExportLimiterCoordinator(DataUpdateCoordinator[PVLimiterState]):
         if not active:
             self._notified_anomaly = False
         return active
+
+    def _evaluate_vacation_auto_disable(self, import_w: float, now: float) -> None:
+        """Flip vacation → normal if grid import indicates someone is home."""
+        if not self._vacation_auto_disable_enabled or self._mode != Mode.VACATION:
+            self._vacation_auto_disable_flag.reset()
+            return
+        condition = import_w > self._vacation_auto_disable_w
+        triggered = self._vacation_auto_disable_flag.update(condition, now)
+        if not triggered:
+            return
+        _LOGGER.info(
+            "Vacation auto-disable: grid import %.0f W exceeded %.0f W — "
+            "switching to normal mode",
+            import_w,
+            self._vacation_auto_disable_w,
+        )
+        self._mode = Mode.NORMAL
+        self._user_mode_override = False
+        self._vacation_auto_disable_flag.reset()
+        if self._notify_target:
+            self.hass.async_create_task(
+                self.hass.services.async_call(
+                    "notify",
+                    self._notify_target,
+                    {
+                        "title": "Solaredge PV Export Limiter — vacation disabled",
+                        "message": (
+                            f"Grid import reached {import_w:.0f} W — vacation "
+                            "mode auto-disabled, switched to normal mode."
+                        ),
+                    },
+                    blocking=False,
+                )
+            )
 
     def _evaluate_voltage_warning(self, voltage: float | None, now: float) -> bool:
         if not self._voltage_protection_enabled or voltage is None:

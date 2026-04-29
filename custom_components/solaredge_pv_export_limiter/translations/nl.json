@@ -123,6 +123,9 @@
           "hysteresis_pct": "Hysteresis (%)",
           "update_interval_s": "Update-interval (seconden)",
           "smoothing_window_s": "Smoothing-venster (seconden)",
+          "vacation_auto_disable_enabled": "Vakantie auto-uitschakelen",
+          "vacation_auto_disable_import_w": "Drempel netafname (W)",
+          "vacation_auto_disable_duration_s": "Triggerduur (s)",
           "voltage_protection_enabled": "Spanningsbescherming aan",
           "voltage_warning_v": "Spanning-waarschuwingsdrempel (V)",
           "tariff_enabled": "Tarief-bewustzijn aan",
@@ -135,7 +138,10 @@
         },
         "data_description": {
           "setpoint_normal_w": "Maximale teruglevering in Standaard-modus. 50 W = kleine buffer zodat je niets afhaalt. 0 W = streef naar nul export. 200 W = ruime export toegestaan.",
-          "setpoint_vacation_w": "Gebruikt in Geen-export-modus. Typisch 0 W zodat er niets wordt teruggeleverd.",
+          "setpoint_vacation_w": "Gebruikt in Vakantie-modus. Typisch 0 W zodat er niets wordt teruggeleverd terwijl je weg bent.",
+          "vacation_auto_disable_enabled": "Indien aan: Vakantie-modus schakelt automatisch terug naar Standaard zodra de netafname langere tijd boven de drempel blijft — voorkomt dat de inverter onnodig wordt geknepen terwijl je toch thuis bent.",
+          "vacation_auto_disable_import_w": "Netafname-niveau waarboven we aannemen dat iemand thuis is. 600 W vangt de meeste grote apparaten; verhoog naar 1000 W als je vaste zware verbruikers hebt (NAS, server, miner).",
+          "vacation_auto_disable_duration_s": "Hoelang de afname boven de drempel moet blijven voordat de modus wisselt. 60 s negeert korte pieken (waterkoker, magnetron-start).",
           "setpoint_negative_price_w": "Gebruikt als de stroomprijs onder de negatieve drempel zakt. Typisch 0 W om te voorkomen dat je betaalt voor terugleveren.",
           "setpoint_wide_w": "Gebruikt in Soepel-modus. Hogere waarde (bv. 200 W) als enige teruglevering acceptabel is.",
           "hysteresis_pct": "Minimale wijziging (%) voordat een nieuwe limiet naar de omvormer wordt geschreven. Voorkomt overmatig schrijven via Modbus. Standaard 1,5% werkt goed.",
@@ -153,7 +159,7 @@
     "mode": {
       "options": {
         "normal": "Standaard",
-        "vacation": "Geen export",
+        "vacation": "Vakantie",
         "negative_price": "Negatief tarief",
         "wide": "Soepel",
         "manual": "Handmatig",
@@ -179,7 +185,7 @@
         "name": "Bedrijfsmodus",
         "state": {
           "normal": "Standaard",
-          "vacation": "Geen export",
+          "vacation": "Vakantie",
           "negative_price": "Negatief tarief",
           "wide": "Soepel",
           "manual": "Handmatig",

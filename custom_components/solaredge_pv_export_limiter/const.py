@@ -72,6 +72,13 @@ SENSOR_LOSS_GRACE_PERIOD_S: Final = 120
 PV_OFF_THRESHOLD_W: Final = 10
 PV_OFF_DURATION_S: Final = 300
 
+# ─── Vacation auto-disable ────────────────────────────────────────────────
+# When vacation mode is active and grid import stays above this threshold for
+# the duration below, assume someone is actually home and switch to normal.
+DEFAULT_VACATION_AUTO_DISABLE_ENABLED: Final = True
+DEFAULT_VACATION_AUTO_DISABLE_IMPORT_W: Final = 600
+DEFAULT_VACATION_AUTO_DISABLE_DURATION_S: Final = 60
+
 
 class Mode(StrEnum):
     """Operating modes."""
@@ -140,6 +147,10 @@ CONF_TARIFF_HIGH_THRESHOLD: Final = "tariff_high_threshold"
 CONF_NOTIFY_TARGET: Final = "notify_target"
 CONF_INITIAL_MODE: Final = "initial_mode"
 CONF_ENABLED_AT_START: Final = "enabled_at_start"
+
+CONF_VACATION_AUTO_DISABLE_ENABLED: Final = "vacation_auto_disable_enabled"
+CONF_VACATION_AUTO_DISABLE_IMPORT_W: Final = "vacation_auto_disable_import_w"
+CONF_VACATION_AUTO_DISABLE_DURATION_S: Final = "vacation_auto_disable_duration_s"
 
 # ─── Export budget ────────────────────────────────────────────────────────
 CONF_BUDGET_ENABLED: Final = "budget_enabled"

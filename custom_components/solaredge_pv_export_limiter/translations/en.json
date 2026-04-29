@@ -123,6 +123,9 @@
           "hysteresis_pct": "Hysteresis (%)",
           "update_interval_s": "Update interval (seconds)",
           "smoothing_window_s": "Smoothing window (seconds)",
+          "vacation_auto_disable_enabled": "Vacation auto-disable",
+          "vacation_auto_disable_import_w": "Auto-disable import threshold (W)",
+          "vacation_auto_disable_duration_s": "Auto-disable trigger duration (s)",
           "voltage_protection_enabled": "Voltage protection enabled",
           "voltage_warning_v": "Voltage warning threshold (V)",
           "tariff_enabled": "Tariff awareness enabled",
@@ -135,7 +138,10 @@
         },
         "data_description": {
           "setpoint_normal_w": "Maximum grid export in Default mode. 50 W = small buffer to avoid importing. 0 W = aim for net-zero. 200 W = allow generous export.",
-          "setpoint_vacation_w": "Used in Zero-export mode. Typically 0 W so no surplus is exported while away.",
+          "setpoint_vacation_w": "Used in Vacation mode. Typically 0 W so no surplus is exported while away.",
+          "vacation_auto_disable_enabled": "When on, Vacation mode will switch back to Default automatically if grid import stays above the threshold for the configured duration — useful so the integration doesn't hold the inverter throttled while you're actually home.",
+          "vacation_auto_disable_import_w": "Grid import level above which someone is assumed to be home. 600 W catches most major appliances; raise to 1000 W if you have always-on heavy loads (NAS, server, miner).",
+          "vacation_auto_disable_duration_s": "How long the import must stay above the threshold before mode switches. 60 s ignores brief spikes (kettle, microwave start-up).",
           "setpoint_negative_price_w": "Used when electricity price drops below the negative threshold. Typically 0 W to avoid paying to export.",
           "setpoint_wide_w": "Used in Permissive mode. Higher value (e.g. 200 W) when some export is acceptable.",
           "hysteresis_pct": "Minimum change (%) before a new limit is written to the inverter. Prevents excessive Modbus writes. Default 1.5% works well.",
@@ -153,7 +159,7 @@
     "mode": {
       "options": {
         "normal": "Default",
-        "vacation": "Zero export",
+        "vacation": "Vacation",
         "negative_price": "Negative tariff",
         "wide": "Permissive",
         "manual": "Manual",
@@ -179,7 +185,7 @@
         "name": "Operating mode",
         "state": {
           "normal": "Default",
-          "vacation": "Zero export",
+          "vacation": "Vacation",
           "negative_price": "Negative tariff",
           "wide": "Permissive",
           "manual": "Manual",

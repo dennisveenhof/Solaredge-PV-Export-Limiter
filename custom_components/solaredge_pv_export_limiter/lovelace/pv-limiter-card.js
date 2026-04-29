@@ -230,7 +230,7 @@ class PVLimiterCard extends HTMLElement {
     const currentMode = this._val("select", "mode", "normal");
     const allModes = ["normal", "vacation", "negative_price", "wide", "manual", "off"];
     const modeLabels = {
-      normal: "Default", vacation: "Zero export", negative_price: "Neg. tariff",
+      normal: "Default", vacation: "Vacation", negative_price: "Neg. tariff",
       wide: "Permissive", manual: "Manual", off: "Disabled",
     };
     this.querySelector(".pvlim-modes").innerHTML = allModes
