@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Solaredge PV Export Limiter — Simulator</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a1f2b;
+    --panel-2: #232a38;
+    --border: #2d3548;
+    --text: #e7ecf3;
+    --muted: #8a96a8;
+    --accent: #4cc2ff;
+    --green: #4ade80;
+    --orange: #fb923c;
+    --red: #f87171;
+    --yellow: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.5;
+  }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    max-width: 1200px;
+  }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+  }
+  .panel h2 {
+    margin: 0 0 16px; font-size: 15px; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--muted); font-weight: 600;
+  }
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; gap: 12px;
+  }
+  .row label { flex: 0 0 auto; min-width: 140px; font-size: 14px; }
+  .row .value { color: var(--accent); font-variant-numeric: tabular-nums; min-width: 70px; text-align: right; font-weight: 600; }
+  .row input[type="range"] { flex: 1; accent-color: var(--accent); }
+  .row select, .row input[type="number"] {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 14px; flex: 1;
+  }
+  .row .toggle { width: 18px; height: 18px; accent-color: var(--accent); }
+  .stat {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .stat:last-child { border: none; }
+  .stat .lbl { color: var(--muted); font-size: 13px; }
+  .stat .val { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pct-bar {
+    height: 24px; background: var(--panel-2); border-radius: 6px;
+    overflow: hidden; margin-top: 8px; position: relative;
+  }
+  .pct-fill {
+    height: 100%; background: linear-gradient(90deg, var(--green), var(--accent));
+    transition: width 0.3s ease; position: relative;
+  }
+  .pct-label {
+    position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; font-size: 13px;
+  }
+  .badge {
+    display: inline-block; padding: 4px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.04em; margin-right: 6px; margin-top: 4px;
+  }
+  .b-ok { background: rgba(74, 222, 128, 0.18); color: var(--green); }
+  .b-warn { background: rgba(251, 146, 60, 0.18); color: var(--orange); }
+  .b-bad { background: rgba(248, 113, 113, 0.18); color: var(--red); }
+  .b-info { background: rgba(76, 194, 255, 0.18); color: var(--accent); }
+  .b-dim { background: rgba(138, 150, 168, 0.15); color: var(--muted); }
+  .explain {
+    background: var(--panel-2); border-left: 3px solid var(--accent);
+    padding: 10px 14px; border-radius: 4px; margin-top: 12px;
+    font-size: 13px; color: var(--muted); line-height: 1.6;
+  }
+  .explain strong { color: var(--text); }
+  .formula { font-family: ui-monospace, monospace; font-size: 12px; color: var(--text); }
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .preset {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+  }
+  .preset:hover { border-color: var(--accent); color: var(--accent); }
+  .col2 { grid-column: span 2; }
+  @media (max-width: 800px) { .col2 { grid-column: span 1; } }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 4px 0; }
+  details[open] summary { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<h1>⚡ Solaredge PV Export Limiter — Simulator</h1>
+<div class="sub">Speel met de waardes en zie wat de limiter zou doen. Volledig los van je echte HA installatie.</div>
+
+<div class="preset-row">
+  <button class="preset" onclick="applyPreset('sunny')">☀️ Zonnige middag</button>
+  <button class="preset" onclick="applyPreset('cloudy')">⛅ Bewolkt</button>
+  <button class="preset" onclick="applyPreset('night')">🌙 Nacht</button>
+  <button class="preset" onclick="applyPreset('vacation')">✈️ Vakantie + waterkoker</button>
+  <button class="preset" onclick="applyPreset('voltage')">⚡ Over-voltage</button>
+  <button class="preset" onclick="applyPreset('budget')">💰 Budget op</button>
+</div>
+
+<div class="grid">
+
+  <div class="panel">
+    <h2>🔌 Sensors (real-world)</h2>
+    <div class="row">
+      <label>PV power</label>
+      <input type="range" id="pv" min="0" max="6000" step="50" value="2000">
+      <span class="value"><span id="pv_v">2000</span> W</span>
+    </div>
+    <div class="row">
+      <label>Household load</label>
+      <input type="range" id="load_input" min="0" max="6000" step="50" value="800">
+      <span class="value"><span id="load_input_v">800</span> W</span>
+    </div>
+    <div class="row">
+      <label>Voltage L1</label>
+      <input type="range" id="v1" min="220" max="260" step="0.5" value="236">
+      <span class="value"><span id="v1_v">236</span> V</span>
+    </div>
+    <div class="row">
+      <label>Voltage L2</label>
+      <input type="range" id="v2" min="220" max="260" step="0.5" value="234">
+      <span class="value"><span id="v2_v">234</span> V</span>
+    </div>
+    <div class="row">
+      <label>Voltage L3</label>
+      <input type="range" id="v3" min="220" max="260" step="0.5" value="236">
+      <span class="value"><span id="v3_v">236</span> V</span>
+    </div>
+    <details>
+      <summary>How load → import/export is computed</summary>
+      <div class="explain">
+        <span class="formula">grid_import = max(0, load - pv)<br>grid_export = max(0, pv - load)</span><br>
+        Deze waardes worden in HA door je P1/DSMR meter gemeten. Hier afgeleid uit PV en verbruik voor eenvoud.
+      </div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <h2>⚙️ Configuration</h2>
+    <div class="row">
+      <label>Mode</label>
+      <select id="mode">
+        <option value="normal">Default / Standaard</option>
+        <option value="vacation">Vacation / Vakantie</option>
+        <option value="negative_price">Negative tariff</option>
+        <option value="wide">Permissive / Soepel</option>
+        <option value="manual">Manual</option>
+        <option value="off">Off</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>Setpoint Normal</label>
+      <input type="range" id="sp_normal" min="0" max="500" step="5" value="50">
+      <span class="value"><span id="sp_normal_v">50</span> W</span>
+    </div>
+    <div class="row">
+      <label>Setpoint Vacation</label>
+      <input type="range" id="sp_vacation" min="0" max="500" step="5" value="0">
+      <span class="value"><span id="sp_vacation_v">0</span> W</span>
+    </div>
+    <div class="row">
+      <label>Setpoint Wide</label>
+      <input type="range" id="sp_wide" min="0" max="500" step="5" value="200">
+      <span class="value"><span id="sp_wide_v">200</span> W</span>
+    </div>
+    <div class="row">
+      <label>Inverter nominal</label>
+      <input type="range" id="nominal" min="1000" max="10000" step="100" value="4000">
+      <span class="value"><span id="nominal_v">4000</span> W</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>🛡️ Voltage protection</h2>
+    <div class="row">
+      <label>Enabled</label>
+      <input type="checkbox" id="vp_on" class="toggle" checked>
+      <span></span>
+    </div>
+    <div class="row">
+      <label>Warning threshold</label>
+      <input type="range" id="vp_warn" min="240" max="260" step="0.5" value="250">
+      <span class="value"><span id="vp_warn_v">250</span> V</span>
+    </div>
+    <div class="explain">Trips when <strong>any phase</strong> exceeds threshold for 30 s. Forces inverter to 0 % until voltage drops below recovery (default 240 V).</div>
+  </div>
+
+  <div class="panel">
+    <h2>💰 Export budget</h2>
+    <div class="row">
+      <label>Enabled</label>
+      <input type="checkbox" id="b_on" class="toggle">
+      <span></span>
+    </div>
+    <div class="row">
+      <label>Budget remaining</label>
+      <input type="range" id="b_remaining" min="0" max="20" step="0.1" value="5">
+      <span class="value"><span id="b_remaining_v">5.0</span> kWh</span>
+    </div>
+    <div class="explain">When enabled: <strong>100 %</strong> while remaining > 0, then <strong>0 %</strong> until period reset. Bypasses the mode setpoint.</div>
+  </div>
+
+  <div class="panel">
+    <h2>🏖️ Vacation auto-disable</h2>
+    <div class="row">
+      <label>Enabled</label>
+      <input type="checkbox" id="va_on" class="toggle" checked>
+      <span></span>
+    </div>
+    <div class="row">
+      <label>Import threshold</label>
+      <input type="range" id="va_w" min="100" max="2000" step="50" value="600">
+      <span class="value"><span id="va_w_v">600</span> W</span>
+    </div>
+    <div class="explain">Active only in Vacation mode. Switches to Default if grid import exceeds threshold for 60 s. Indicator only — no real timer in this simulator.</div>
+  </div>
+
+  <div class="panel" id="output">
+    <h2>📊 Live output</h2>
+    <div class="stat"><span class="lbl">Grid import</span><span class="val" id="o_import">0 W</span></div>
+    <div class="stat"><span class="lbl">Grid export</span><span class="val" id="o_export">0 W</span></div>
+    <div class="stat"><span class="lbl">Computed load</span><span class="val" id="o_load">0 W</span></div>
+    <div class="stat"><span class="lbl">Effective setpoint</span><span class="val" id="o_setpoint">0 W</span></div>
+    <div class="stat"><span class="lbl">Target W</span><span class="val" id="o_target_w">0 W</span></div>
+    <div class="stat"><span class="lbl">Max voltage</span><span class="val" id="o_voltage">0 V</span></div>
+    <div class="stat" style="border:none;padding-bottom:0"><span class="lbl">Inverter limit (target %)</span><span class="val" id="o_target_pct">100 %</span></div>
+    <div class="pct-bar">
+      <div class="pct-fill" id="pct_fill" style="width:100%"><div class="pct-label" id="pct_label">100%</div></div>
+    </div>
+    <div style="margin-top:14px">
+      <span class="badge" id="badge_status">OK</span>
+      <span class="badge" id="badge_mode">DEFAULT</span>
+      <span id="extra_badges"></span>
+    </div>
+    <div class="explain" id="reasoning">Adjust sliders to see what the limiter would do.</div>
+  </div>
+
+</div>
+
+<details style="margin-top: 20px; max-width: 1200px;">
+  <summary>📐 Show the math</summary>
+  <div class="explain">
+<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px;color:var(--text)">
+load_w     = pv + grid_import − grid_export
+setpoint   = setpoint for active mode (Default=50, Vacation=0, Wide=200, Off=skip)
+target_w   = load_w + setpoint
+target_pct = clamp(target_w / nominal_w × 100, 0, 100)
+
+Override priority (highest wins):
+  1. Voltage protection: if max(L1,L2,L3) > threshold → target_pct = 0
+  2. Budget: if enabled and budget exhausted → 0; else → 100
+  3. Mode = off                                       → target_pct = 100
+  4. No PV detected (PV<50 W, current limit ≥99%)     → target_pct = 100
+
+After overrides:
+  target_w = (target_pct / 100) × nominal_w   (kept consistent)
+</pre>
+  </div>
+</details>
+
+<script>
+const el = id => document.getElementById(id);
+const setpointMap = {
+  normal: () => +el('sp_normal').value,
+  vacation: () => +el('sp_vacation').value,
+  negative_price: () => 0,
+  wide: () => +el('sp_wide').value,
+  manual: () => 50,
+  off: () => null,
+};
+const modeLabel = {
+  normal: 'DEFAULT', vacation: 'VACATION', negative_price: 'NEG. TARIFF',
+  wide: 'PERMISSIVE', manual: 'MANUAL', off: 'OFF',
+};
+
+function fmt(n, unit) { return Math.round(n) + ' ' + unit; }
+function fmtV(v) { return v.toFixed(1) + ' V'; }
+
+function compute() {
+  const pv = +el('pv').value;
+  const householdLoad = +el('load_input').value;
+  const grid_import = Math.max(0, householdLoad - pv);
+  const grid_export = Math.max(0, pv - householdLoad);
+  const v1 = +el('v1').value, v2 = +el('v2').value, v3 = +el('v3').value;
+  const vmax = Math.max(v1, v2, v3);
+  const mode = el('mode').value;
+  const nominal = +el('nominal').value;
+  const vpOn = el('vp_on').checked;
+  const vpWarn = +el('vp_warn').value;
+  const bOn = el('b_on').checked;
+  const bRem = +el('b_remaining').value;
+  const vaOn = el('va_on').checked;
+  const vaW = +el('va_w').value;
+
+  // Compute load using the integration's formula (PV + import − export)
+  const load_w = pv + grid_import - grid_export;
+  const setpoint = setpointMap[mode]();
+  const setpointDisplay = setpoint === null ? '—' : setpoint + ' W';
+
+  // Default target
+  let target_pct = 100;
+  let status = 'ok';
+  let statusBadge = 'b-ok';
+  let reasoning = '';
+  const extraBadges = [];
+
+  if (mode === 'off') {
+    target_pct = 100;
+    status = 'disabled';
+    statusBadge = 'b-dim';
+    reasoning = '<strong>Mode = Off</strong> — limiter inactive, inverter runs at 100%.';
+  } else {
+    // Standard path
+    const target_w = load_w + setpoint;
+    target_pct = Math.max(0, Math.min(100, (target_w / nominal) * 100));
+
+    // No-PV guard
+    if (pv < 50 && grid_export < 100) {
+      target_pct = 100;
+      status = 'no_pv';
+      statusBadge = 'b-dim';
+      reasoning = '<strong>No PV detected</strong> — inverter free at 100% (nothing to curb).';
+    } else {
+      reasoning = `<strong>Normal control:</strong> target = load (${Math.round(load_w)} W) + setpoint (${setpoint} W) = ${Math.round(target_w)} W → ${target_pct.toFixed(1)}% of ${nominal} W nominal.`;
+    }
+  }
+
+  // Voltage protection (wins over everything)
+  if (vpOn && vmax > vpWarn) {
+    target_pct = 0;
+    status = 'voltage_high';
+    statusBadge = 'b-bad';
+    reasoning = `<strong>Voltage protection!</strong> Max phase ${vmax.toFixed(1)} V > ${vpWarn} V threshold. Inverter forced to 0% until voltage drops.`;
+    extraBadges.push(['VOLTAGE HIGH', 'b-bad']);
+  }
+
+  // Budget override (wins over mode, but not voltage)
+  else if (bOn) {
+    if (bRem <= 0) {
+      target_pct = 0;
+      status = 'budget_exhausted';
+      statusBadge = 'b-bad';
+      reasoning = '<strong>Budget exhausted</strong> — export forced to 0% until next period reset.';
+      extraBadges.push(['BUDGET EXHAUSTED', 'b-bad']);
+    } else {
+      target_pct = 100;
+      status = 'budget_free';
+      statusBadge = 'b-info';
+      reasoning = `<strong>Budget free phase</strong> — ${bRem.toFixed(2)} kWh remaining, full export allowed.`;
+      extraBadges.push(['BUDGET FREE', 'b-info']);
+    }
+  }
+
+  // Vacation auto-disable indicator (informational)
+  if (mode === 'vacation' && vaOn && grid_import > vaW) {
+    extraBadges.push(['AUTO-DISABLE PENDING', 'b-warn']);
+    reasoning += ` <em style="color:var(--orange)">⚠ Import ${Math.round(grid_import)} W > ${vaW} W — if this lasts 60 s, mode flips to Default.</em>`;
+  }
+
+  // Compute target_w consistent with final pct
+  const final_target_w = (target_pct / 100) * nominal;
+
+  // Render
+  el('o_import').textContent = fmt(grid_import, 'W');
+  el('o_export').textContent = fmt(grid_export, 'W');
+  el('o_load').textContent = fmt(load_w, 'W');
+  el('o_setpoint').textContent = setpointDisplay;
+  el('o_target_w').textContent = fmt(final_target_w, 'W');
+  el('o_voltage').textContent = fmtV(vmax);
+  el('o_target_pct').textContent = target_pct.toFixed(1) + ' %';
+  el('pct_fill').style.width = target_pct + '%';
+  el('pct_label').textContent = target_pct.toFixed(0) + '%';
+
+  const sb = el('badge_status');
+  sb.textContent = status.toUpperCase().replace('_', ' ');
+  sb.className = 'badge ' + statusBadge;
+  el('badge_mode').textContent = modeLabel[mode];
+  el('badge_mode').className = 'badge b-info';
+
+  el('extra_badges').innerHTML = extraBadges.map(([t, c]) => `<span class="badge ${c}">${t}</span>`).join('');
+  el('reasoning').innerHTML = reasoning;
+}
+
+// Wire all inputs
+['pv','load_input','v1','v2','v3','sp_normal','sp_vacation','sp_wide','nominal','vp_warn','b_remaining','va_w']
+  .forEach(id => {
+    el(id).addEventListener('input', () => {
+      const v = el(id).value;
+      const formatted = id === 'b_remaining' ? (+v).toFixed(1)
+                      : (id.startsWith('v') && id.length === 2) ? (+v).toFixed(1)
+                      : v;
+      el(id + '_v').textContent = formatted;
+      compute();
+    });
+  });
+['mode','vp_on','b_on','va_on'].forEach(id => el(id).addEventListener('change', compute));
+
+const presets = {
+  sunny:    { pv:3500, load_input:600,  v1:238, v2:237, v3:238, mode:'normal',   vp_on:true, b_on:false, va_on:true,  bremain:5 },
+  cloudy:   { pv:400,  load_input:1200, v1:232, v2:231, v3:232, mode:'normal',   vp_on:true, b_on:false, va_on:true,  bremain:5 },
+  night:    { pv:0,    load_input:300,  v1:235, v2:234, v3:235, mode:'normal',   vp_on:true, b_on:false, va_on:true,  bremain:5 },
+  vacation: { pv:200,  load_input:1500, v1:235, v2:234, v3:235, mode:'vacation', vp_on:true, b_on:false, va_on:true,  bremain:5 },
+  voltage:  { pv:3500, load_input:400,  v1:252, v2:251, v3:253, mode:'normal',   vp_on:true, b_on:false, va_on:true,  bremain:5 },
+  budget:   { pv:3000, load_input:500,  v1:236, v2:235, v3:236, mode:'normal',   vp_on:true, b_on:true,  va_on:true,  bremain:0 },
+};
+function applyPreset(name) {
+  const p = presets[name]; if (!p) return;
+  for (const [k, v] of Object.entries(p)) {
+    if (k === 'bremain') { el('b_remaining').value = v; el('b_remaining_v').textContent = (+v).toFixed(1); }
+    else if (typeof v === 'boolean') { el(k).checked = v; }
+    else if (k === 'mode') { el(k).value = v; }
+    else { el(k).value = v; el(k+'_v').textContent = (k.startsWith('v') && k.length===2) ? v.toFixed(1) : v; }
+  }
+  compute();
+}
+
+compute();
+</script>
+</body>
+</html>
